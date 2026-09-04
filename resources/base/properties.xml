@@ -34,6 +34,20 @@
         <property id="baselineSec"       type="number">60</property>
         <property id="colorBlind"        type="boolean">false</property>
         <property id="showPace"          type="boolean">true</property>
+        <!-- 0 = SmO2, 1 = rate, 2 = THb, 3 = SCI: what the chart-less tiers
+             show beside the traffic light -->
+        <property id="smallMetric"       type="number">0</property>
+        <!-- 0 = %/s, 1 = %/min -->
+        <property id="rateUnit"          type="number">0</property>
+        <!-- 0 = whole session, 1 = current lap -->
+        <property id="rangeScope"        type="number">0</property>
+        <!-- second line under the number: 0 = none, 1 = metric name,
+             2 = rate of change -->
+        <property id="smallSecond"       type="number">2</property>
+        <property id="zoneLabels"        type="boolean">true</property>
+        <!-- shape inside the state light, so the verdict does not rest on
+             hue alone -->
+        <property id="stateIcons"        type="boolean">true</property>
 
         <!-- Recording -->
         <property id="recordFit"         type="boolean">true</property>
@@ -50,12 +64,30 @@
         <string id="s_thetaDrift">Drift threshold (0.001 %/s)</string>
         <string id="s_chartWindow">Chart window (s)</string>
         <string id="s_yAxis">Y axis scaling</string>
-        <string id="s_yAxis_auto">Auto (session range)</string>
+        <string id="s_yAxis_window">Auto (last minutes)</string>
+        <string id="s_yAxis_session">Session range</string>
         <string id="s_yAxis_2080">Fixed 20 – 80 %</string>
         <string id="s_yAxis_0100">Fixed 0 – 100 %</string>
         <string id="s_baseline">Baseline window (s)</string>
         <string id="s_colorBlind">Colour-blind palette</string>
         <string id="s_showPace">Show pace / power</string>
+        <string id="s_smallMetric">Small fields: metric</string>
+        <string id="s_metric_smo2">SmO2 (%)</string>
+        <string id="s_metric_rate">Rate of change</string>
+        <string id="s_metric_thb">Total haemoglobin</string>
+        <string id="s_metric_sci">Control index</string>
+        <string id="s_rateUnit">Rate unit</string>
+        <string id="s_rateUnit_sec">%/s</string>
+        <string id="s_rateUnit_min">%/min</string>
+        <string id="s_smallSecond">Small fields: second line</string>
+        <string id="s_second_none">Nothing</string>
+        <string id="s_second_label">Name of the metric</string>
+        <string id="s_second_rate">Rate of change</string>
+        <string id="s_rangeScope">MIN / MAX refer to</string>
+        <string id="s_rangeScope_session">Whole session</string>
+        <string id="s_rangeScope_lap">Current lap</string>
+        <string id="s_zoneLabels">Name states as training zones</string>
+        <string id="s_stateIcons">Symbol inside the state light</string>
         <string id="s_recordFit">Record SmO2 fields to FIT</string>
     </strings>
 
@@ -95,9 +127,10 @@
 
         <setting propertyKey="@Properties.yAxisMode" title="@Strings.s_yAxis">
             <settingConfig type="list">
-                <listEntry value="0">@Strings.s_yAxis_auto</listEntry>
-                <listEntry value="1">@Strings.s_yAxis_2080</listEntry>
-                <listEntry value="2">@Strings.s_yAxis_0100</listEntry>
+                <listEntry value="0">@Strings.s_yAxis_window</listEntry>
+                <listEntry value="1">@Strings.s_yAxis_session</listEntry>
+                <listEntry value="2">@Strings.s_yAxis_2080</listEntry>
+                <listEntry value="3">@Strings.s_yAxis_0100</listEntry>
             </settingConfig>
         </setting>
 
@@ -110,6 +143,45 @@
         </setting>
 
         <setting propertyKey="@Properties.showPace" title="@Strings.s_showPace">
+            <settingConfig type="boolean"/>
+        </setting>
+
+        <setting propertyKey="@Properties.smallMetric" title="@Strings.s_smallMetric">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_metric_smo2</listEntry>
+                <listEntry value="1">@Strings.s_metric_rate</listEntry>
+                <listEntry value="2">@Strings.s_metric_thb</listEntry>
+                <listEntry value="3">@Strings.s_metric_sci</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.smallSecond" title="@Strings.s_smallSecond">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_second_none</listEntry>
+                <listEntry value="1">@Strings.s_second_label</listEntry>
+                <listEntry value="2">@Strings.s_second_rate</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.rateUnit" title="@Strings.s_rateUnit">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_rateUnit_sec</listEntry>
+                <listEntry value="1">@Strings.s_rateUnit_min</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.rangeScope" title="@Strings.s_rangeScope">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_rangeScope_session</listEntry>
+                <listEntry value="1">@Strings.s_rangeScope_lap</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.zoneLabels" title="@Strings.s_zoneLabels">
+            <settingConfig type="boolean"/>
+        </setting>
+
+        <setting propertyKey="@Properties.stateIcons" title="@Strings.s_stateIcons">
             <settingConfig type="boolean"/>
         </setting>
 

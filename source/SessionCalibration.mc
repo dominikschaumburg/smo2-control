@@ -207,6 +207,12 @@ class SessionCalibration {
     public function getBaseline() as Float? { return _baseline; }
     public function getMin() as Float? { return _min; }
     public function getMax() as Float? { return _max; }
+
+    //! Extremes of the current lap only. Unlike the session range these are
+    //! not relaxed back towards the middle — a lap is short enough that its
+    //! true extremes stay relevant for its whole length.
+    public function getLapMin() as Float? { return _lapMin; }
+    public function getLapMax() as Float? { return _lapMax; }
     public function getLapIndex() as Number { return _lapIndex; }
     public function getCalibLow() as Float? { return _calibEnd; }
     public function getCalibHigh() as Float? { return _calibStart; }
