@@ -1,0 +1,15 @@
+{
+    "moxyDeviceNumber": 0,
+    "smoothingAlpha100": 30,
+    "smoothingBeta100": 15,
+    "predictHorizon": 15,
+    "steadyWindowSec": 45,
+    "thetaStable1000": 20,
+    "thetaDrift1000": 50,
+    "chartWindowSec": 90,
+    "yAxisMode": 0,
+    "baselineSec": 60,
+    "colorBlind": false,
+    "showPace": true,
+    "recordFit": true
+}

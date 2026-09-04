@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run in Simulator (fr970)",
+            "request": "launch",
+            "type": "monkeyc",
+            "device": "fr970"
+        },
+        {
+            "name": "Run in Simulator (fenix8 47mm)",
+            "request": "launch",
+            "type": "monkeyc",
+            "device": "fenix847mm"
+        },
+        {
+            "name": "Run in Simulator (edge1040)",
+            "request": "launch",
+            "type": "monkeyc",
+            "device": "edge1040"
+        }
+    ]
+}

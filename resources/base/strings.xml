@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <string id="AppName">SmO2 Control</string>
+
+    <!-- FIT field / chart labels -->
+    <string id="f_smo2_label">SmO2 smoothed</string>
+    <string id="f_smo2_units">%</string>
+    <string id="f_trend_label">SmO2 trend</string>
+    <string id="f_trend_units">%/s</string>
+    <string id="f_sci_label">SmO2 Control Index</string>
+    <string id="f_sci_units"></string>
+    <string id="f_state_label">SmO2 state</string>
+    <string id="f_state_units"></string>
+    <string id="f_thb_label">THb</string>
+    <string id="f_thb_units">g/dl</string>
+    <string id="f_lap_rate_label">Lap desat rate</string>
+    <string id="f_lap_rate_units">%/s</string>
+    <string id="f_lap_min_label">Lap SmO2 min</string>
+    <string id="f_lap_max_label">Lap SmO2 max</string>
+    <string id="f_lap_onkin_label">Lap on-kinetics rate</string>
+    <string id="f_sess_avg_label">Avg SmO2</string>
+</resources>

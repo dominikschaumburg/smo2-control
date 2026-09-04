@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <fitContributions>
+        <!-- Record fields -->
+        <fitField id="0"
+            displayInChart="true"
+            sortOrder="0"
+            precision="1"
+            chartTitle="@Strings.f_smo2_label"
+            dataLabel="@Strings.f_smo2_label"
+            unitLabel="@Strings.f_smo2_units"
+            fillColor="#E8342F" />
+
+        <fitField id="1"
+            displayInChart="true"
+            sortOrder="1"
+            precision="3"
+            chartTitle="@Strings.f_trend_label"
+            dataLabel="@Strings.f_trend_label"
+            unitLabel="@Strings.f_trend_units"
+            fillColor="#2F7BE8" />
+
+        <fitField id="2"
+            displayInChart="true"
+            sortOrder="2"
+            precision="3"
+            chartTitle="@Strings.f_sci_label"
+            dataLabel="@Strings.f_sci_label"
+            unitLabel="@Strings.f_sci_units"
+            fillColor="#8A2FE8" />
+
+        <fitField id="3"
+            displayInChart="true"
+            sortOrder="3"
+            precision="0"
+            chartTitle="@Strings.f_state_label"
+            dataLabel="@Strings.f_state_label"
+            unitLabel="@Strings.f_state_units"
+            fillColor="#E8A32F" />
+
+        <fitField id="4"
+            displayInChart="true"
+            sortOrder="4"
+            precision="2"
+            chartTitle="@Strings.f_thb_label"
+            dataLabel="@Strings.f_thb_label"
+            unitLabel="@Strings.f_thb_units"
+            fillColor="#2FA84F" />
+
+        <!-- Lap fields: Kane's per-interval desaturation rate + lap extremes -->
+        <fitField id="5"
+            displayInActivityLaps="true"
+            sortOrder="5"
+            precision="3"
+            dataLabel="@Strings.f_lap_rate_label"
+            unitLabel="@Strings.f_trend_units" />
+
+        <fitField id="6"
+            displayInActivityLaps="true"
+            sortOrder="6"
+            precision="1"
+            dataLabel="@Strings.f_lap_min_label"
+            unitLabel="@Strings.f_smo2_units" />
+
+        <fitField id="7"
+            displayInActivityLaps="true"
+            sortOrder="7"
+            precision="1"
+            dataLabel="@Strings.f_lap_max_label"
+            unitLabel="@Strings.f_smo2_units" />
+
+        <fitField id="9"
+            displayInActivityLaps="true"
+            sortOrder="9"
+            precision="3"
+            dataLabel="@Strings.f_lap_onkin_label"
+            unitLabel="@Strings.f_trend_units" />
+
+        <!-- Session summary -->
+        <fitField id="8"
+            displayInActivitySummary="true"
+            sortOrder="8"
+            precision="1"
+            dataLabel="@Strings.f_sess_avg_label"
+            unitLabel="@Strings.f_smo2_units" />
+    </fitContributions>
+</resources>

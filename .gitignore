@@ -1,0 +1,28 @@
+# ─── Secrets — never commit ───
+# Garmin developer signing key (private). Each developer supplies their own.
+developer_key
+*.der
+*.pem
+
+# ─── Build artifacts ───
+bin/
+gen/
+mir/
+internal-mir/
+*.prg
+*.prg.debug.xml
+*.iq
+
+# ─── Local tooling ───
+.claude/settings.local.json
+
+# ─── Personal / recorded data ───
+*.fit
+*.csv
+
+# ─── macOS ───
+.DS_Store
+
+# ─── Python ───
+__pycache__/
+*.pyc

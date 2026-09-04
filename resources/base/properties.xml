@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <!-- ===== Properties =====
+         Float settings are stored as integers (x100 / x1000) because the
+         Connect IQ settings editor has no reliable float input on all devices.
+    -->
+    <properties>
+        <!-- Sensor: ANT device number, 0 = pair with the first Moxy found -->
+        <property id="moxyDeviceNumber"  type="number">0</property>
+
+        <!-- Holt double-exponential smoothing, stored x100 -->
+        <property id="smoothingAlpha100" type="number">30</property>
+        <property id="smoothingBeta100"  type="number">15</property>
+        <!-- Prediction horizon in seconds, 0 = off -->
+        <property id="predictHorizon"    type="number">15</property>
+
+        <!-- Steady-state judgement: regression window and thresholds in %/s
+             (stored x1000). These are deliberately an order of magnitude below
+             the on-kinetics rates: a sustainable plateau drifts at well under
+             0.02 %/s, an unsustainable one at 0.03–0.05 %/s. -->
+        <property id="steadyWindowSec"   type="number">45</property>
+        <property id="thetaStable1000"   type="number">20</property>
+        <property id="thetaDrift1000"    type="number">50</property>
+
+        <!-- Display -->
+        <property id="chartWindowSec"    type="number">90</property>
+        <property id="yAxisMode"         type="number">0</property>
+        <property id="baselineSec"       type="number">60</property>
+        <property id="colorBlind"        type="boolean">false</property>
+        <property id="showPace"          type="boolean">true</property>
+
+        <!-- Recording -->
+        <property id="recordFit"         type="boolean">true</property>
+    </properties>
+
+    <!-- ===== Setting labels ===== -->
+    <strings>
+        <string id="s_moxyDevice">Moxy ANT ID (0 = any)</string>
+        <string id="s_alpha">Smoothing: level alpha (x100)</string>
+        <string id="s_beta">Smoothing: trend beta (x100)</string>
+        <string id="s_predict">Prediction horizon (s, 0 = off)</string>
+        <string id="s_steadyWindow">Steady-state window (s)</string>
+        <string id="s_thetaStable">Steady threshold (0.001 %/s)</string>
+        <string id="s_thetaDrift">Drift threshold (0.001 %/s)</string>
+        <string id="s_chartWindow">Chart window (s)</string>
+        <string id="s_yAxis">Y axis scaling</string>
+        <string id="s_yAxis_auto">Auto (session range)</string>
+        <string id="s_yAxis_2080">Fixed 20 – 80 %</string>
+        <string id="s_yAxis_0100">Fixed 0 – 100 %</string>
+        <string id="s_baseline">Baseline window (s)</string>
+        <string id="s_colorBlind">Colour-blind palette</string>
+        <string id="s_showPace">Show pace / power</string>
+        <string id="s_recordFit">Record SmO2 fields to FIT</string>
+    </strings>
+
+    <!-- ===== Settings UI ===== -->
+    <settings>
+        <setting propertyKey="@Properties.moxyDeviceNumber" title="@Strings.s_moxyDevice">
+            <settingConfig type="numeric" min="0" max="65535"/>
+        </setting>
+
+        <setting propertyKey="@Properties.smoothingAlpha100" title="@Strings.s_alpha">
+            <settingConfig type="numeric" min="5" max="100"/>
+        </setting>
+
+        <setting propertyKey="@Properties.smoothingBeta100" title="@Strings.s_beta">
+            <settingConfig type="numeric" min="1" max="100"/>
+        </setting>
+
+        <setting propertyKey="@Properties.predictHorizon" title="@Strings.s_predict">
+            <settingConfig type="numeric" min="0" max="60"/>
+        </setting>
+
+        <setting propertyKey="@Properties.steadyWindowSec" title="@Strings.s_steadyWindow">
+            <settingConfig type="numeric" min="15" max="120"/>
+        </setting>
+
+        <setting propertyKey="@Properties.thetaStable1000" title="@Strings.s_thetaStable">
+            <settingConfig type="numeric" min="5" max="500"/>
+        </setting>
+
+        <setting propertyKey="@Properties.thetaDrift1000" title="@Strings.s_thetaDrift">
+            <settingConfig type="numeric" min="10" max="1000"/>
+        </setting>
+
+        <setting propertyKey="@Properties.chartWindowSec" title="@Strings.s_chartWindow">
+            <settingConfig type="numeric" min="30" max="300"/>
+        </setting>
+
+        <setting propertyKey="@Properties.yAxisMode" title="@Strings.s_yAxis">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_yAxis_auto</listEntry>
+                <listEntry value="1">@Strings.s_yAxis_2080</listEntry>
+                <listEntry value="2">@Strings.s_yAxis_0100</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.baselineSec" title="@Strings.s_baseline">
+            <settingConfig type="numeric" min="0" max="300"/>
+        </setting>
+
+        <setting propertyKey="@Properties.colorBlind" title="@Strings.s_colorBlind">
+            <settingConfig type="boolean"/>
+        </setting>
+
+        <setting propertyKey="@Properties.showPace" title="@Strings.s_showPace">
+            <settingConfig type="boolean"/>
+        </setting>
+
+        <setting propertyKey="@Properties.recordFit" title="@Strings.s_recordFit">
+            <settingConfig type="boolean"/>
+        </setting>
+    </settings>
+
+</resources>

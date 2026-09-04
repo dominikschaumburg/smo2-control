@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <string id="AppName">SmO2 Control</string>
+
+    <string id="f_smo2_label">SmO2 geglättet</string>
+    <string id="f_trend_label">SmO2 Trend</string>
+    <string id="f_sci_label">SmO2 Control Index</string>
+    <string id="f_state_label">SmO2 Zustand</string>
+    <string id="f_lap_rate_label">Desaturationsrate (Lap)</string>
+    <string id="f_lap_min_label">SmO2 Min (Lap)</string>
+    <string id="f_lap_max_label">SmO2 Max (Lap)</string>
+    <string id="f_lap_onkin_label">On-Kinetik-Rate (Lap)</string>
+    <string id="f_sess_avg_label">SmO2 Ø</string>
+
+    <string id="s_moxyDevice">Moxy ANT-ID (0 = beliebig)</string>
+    <string id="s_alpha">Glättung: Level Alpha (x100)</string>
+    <string id="s_beta">Glättung: Trend Beta (x100)</string>
+    <string id="s_predict">Prognose-Horizont (s, 0 = aus)</string>
+    <string id="s_steadyWindow">Steady-State-Fenster (s)</string>
+    <string id="s_thetaStable">Steady-Schwelle (0,001 %/s)</string>
+    <string id="s_thetaDrift">Drift-Schwelle (0,001 %/s)</string>
+    <string id="s_chartWindow">Diagramm-Fenster (s)</string>
+    <string id="s_yAxis">Y-Achsen-Skalierung</string>
+    <string id="s_yAxis_auto">Automatisch (Session-Range)</string>
+    <string id="s_yAxis_2080">Fest 20 – 80 %</string>
+    <string id="s_yAxis_0100">Fest 0 – 100 %</string>
+    <string id="s_baseline">Baseline-Fenster (s)</string>
+    <string id="s_colorBlind">Farbenblind-Palette</string>
+    <string id="s_showPace">Pace / Power anzeigen</string>
+    <string id="s_recordFit">SmO2-Felder ins FIT schreiben</string>
+</resources>
