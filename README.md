@@ -80,9 +80,11 @@ depends on sensor placement, adipose thickness, strap pressure and day form.
 
 Three tiers, chosen once from the rendered size:
 
-- **Full** — the full-screen and half-screen field only. Filled, axed chart
-  with MIN/MAX labels, lap markers and a forecast triangle; value and state
-  light above, rate and pace/power below.
+- **Full** — the full-screen and half-screen field only. Filled chart with
+  gridlines, lap markers and a forecast needle; value and state light above,
+  rate below, and MIN / MAX / PACE as a labelled cell grid under the chart.
+  Rows pack to the edges on a bike computer and inwards on a round watch,
+  because on a round watch the tips of the circle cannot hold text.
 - **Medium / Compact** — everything smaller: a **traffic light** and one
   configurable number as a single centred group, with the rate of change on a
   second line where there is room. A sparkline squeezed into a quarter of a

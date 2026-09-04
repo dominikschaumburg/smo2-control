@@ -1,7 +1,7 @@
 SmO2 Control: Steady-State Intensity Monitor
 
 Ein Datenfeld für den Moxy-Sensor. Eine Frage, in Echtzeit: Bin ich im Steady
-State, oder driftet meine Sättigung noch nach unten?
+State, oder driftet die Sättigung noch nach unten?
 
 Das Problem mit Absolutwerten
 
@@ -20,43 +20,45 @@ RECOVER (blau): steigend, Erholung oder zu geringe Intensität
 
 Die Labels benennen das gemessene Verhalten; die kinetischen Namen (ON-KIN,
 OVER, CONTROL, STEADY, REOXY) sind eine Einstellung entfernt. Zonennummern
-fehlen mit Absicht: Eine Zone ist eine Aussage über die Intensität, dieses
-Feld misst eine Steigung.
+fehlen absichtlich: Eine Zone ist eine Aussage über die Intensität, dieses Feld
+misst eine Steigung.
 
 Entscheidend ist ONSET gegen FALLING. Jedes harte Intervall beginnt mit einem
 steilen Abfall, und der ist noch kein Urteil; ob es nachhaltig war, entscheidet
-sich daran, ob danach das Plateau eintritt. Deshalb hat der Transient einen
+sich daran, ob danach ein Plateau eintritt. Deshalb hat der Transient einen
 eigenen Zustand.
 
 An echten Daten kalibriert
 
-Die Schwellen sind gemessen, nicht geraten. Über fünf echte
-Schwellen-Einheiten bleibt die Steigung im Plateau über 60 Sekunden innerhalb
-von ±0,06 %/s, während der On-Transient −0,23 %/s unterschreitet.
+Die Schwellen sind gemessen, nicht geraten. Über fünf echte Einheiten bleibt
+die Steigung im Plateau über 60 Sekunden innerhalb von ±0,06 %/s, während der
+On-Transient −0,23 %/s unterschreitet.
 
 Adaptive Anzeige
 
-Vollbild: Die Höhe wird gedrittelt. Wert und Zustandsampel oben, das Diagramm
-in der Mitte, Rate sowie Pace oder Power unten, jede Zeile so groß, wie ihre
-Breite erlaubt. Das Diagramm zeigt eingefärbte Segmente mit gefüllter Fläche
-darunter, Achsen mit MIN und MAX, Lap-Marker und eine Prognose-Nadel am
-rechten Rand.
+Vollbild: Wert und Zustandsampel oben, das Diagramm in der Mitte, darunter die
+Rate und ein beschriftetes Zellenraster mit MIN, MAX und Pace. Jede Zeile so
+groß, wie ihre Breite erlaubt; auf einem Radcomputer sitzen die Zeilen an den
+Kanten und das Diagramm bekommt die Höhe dazwischen. Es zeigt eingefärbte
+Segmente mit gefüllter Fläche, Gitterlinien, Lap-Marker und eine
+Prognose-Nadel.
+
 Jedes kleinere Feld bekommt eine Ampel und eine Zahl, als Gruppe zentriert. Die
 Zahl ist einstellbar (SmO2, Rate, THb, Control-Index), darunter die Rate,
-wahlweise in %/s oder %/min. MIN und MAX über die gesamte Einheit oder nur die
-aktuelle Runde. Die Ampel trägt zusätzlich ein Symbol, damit das Urteil nicht
-allein an der Farbe hängt, dazu eine Farbenblind-Palette.
+wahlweise in %/s oder %/min. MIN und MAX über die Einheit oder die aktuelle
+Runde. Die Ampel trägt ein Symbol, damit das Urteil nicht allein an der Farbe
+hängt, dazu eine Farbenblind-Palette.
 
 Session-interne Kalibrierung
 
 Baseline-Median der ersten Minute, rollendes Session-Min/Max mit langsamer
-Relaxation gegen Ausreißer, erster Lap als Referenz, Doppel-Lap als Reset.
+Relaxation gegen Ausreißer, erster Lap als Referenz, Doppel-Lap setzt zurück.
 
 Entkopplungserkennung
 
 Bleibt Pace oder Power 30 Sekunden konstant, während die Sättigung weiter
 absinkt, meldet das Feld Entkopplung: beginnende Ermüdung oder
-Effizienzverlust, in keinem der Signale allein sichtbar.
+Effizienzverlust, in keinem Signal allein sichtbar.
 
 Aufzeichnung für die Nachanalyse
 
@@ -66,24 +68,23 @@ Minimum, Maximum. Als Diagramm in Garmin Connect.
 
 Wichtig vor der ersten Nutzung
 
-Der Moxy darf nicht zusätzlich nativ in der Sensorliste der Uhr gekoppelt sein.
+Der Moxy darf nicht zusätzlich nativ in der Sensorliste gekoppelt sein.
 Muskeloxygenierung war nie Teil der nativen Connect-IQ-Sensor-API, also öffnet
 dieses Feld einen eigenen ANT-Kanal, und ein Sensor hält nur einen. Entkopple
-ihn, dann findet ihn das Feld selbst.
+ihn, dann findet das Feld ihn selbst.
 
 Ungültige Messwerte und Umgebungslicht-Warnungen gelten als "keine Daten",
 niemals als 0 %. Bei Aussetzern friert der Trend ein statt eine Steigung zu
-erfinden; der Kanal verbindet sich selbst neu.
+erfinden, der Kanal verbindet sich selbst neu.
 
 Einstellbar
 
 Sensor-ID, Glättung, Prognosehorizont, Steady-State-Fenster, beide Schwellen,
 Diagrammfenster, Y-Achse, Baseline, Zustandsbenennung, Metrik und zweite Zeile
-der kleinen Felder, Einheit der Rate, Symbole, Farbenblind-Modus, Pace,
-FIT-Aufzeichnung.
+der kleinen Felder, Rateneinheit, Symbole, Farbenblind-Modus, Pace, FIT.
 
 Das Repository enthält ein Werkzeug, das dieselbe Berechnung offline auf
-eigenen .fit-Dateien rechnet, zum Abstimmen an den eigenen Intervallen.
+eigenen .fit-Dateien rechnet, zum Abstimmen an eigenen Intervallen.
 
 Voraussetzungen
 

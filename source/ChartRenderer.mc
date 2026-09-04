@@ -70,7 +70,6 @@ class ChartRenderer {
 
     // Set by the view rather than passed to draw(): Monkey C caps a method at
     // nine arguments and the signature was over it.
-    private var _axisFont as Graphics.FontDefinition = Graphics.FONT_XTINY;
     private var _showAxis as Boolean = true;
     private var _yMode as Number = 0;
     private var _sessMin as Float? = null;
@@ -188,17 +187,12 @@ class ChartRenderer {
 
     public function getCount() as Number { return _count; }
 
-    public function setAxisFont(font as Graphics.FontDefinition) as Void {
-        _axisFont = font;
-    }
-
     public function setClassifier(cb as Method(slope as Float) as Number) as Void {
         _classify = cb;
     }
 
-    //! Axis labels only earn their gutter when the plot is wide enough to
-    //! spare it. In a quarter-screen field they would cost a third of the
-    //! width to say what the header already says.
+    //! Whether to draw the bound and midpoint gridlines. There are no axis
+    //! labels any more; the bounds are cells in the grid below the chart.
     public function setShowAxis(show as Boolean) as Void {
         _showAxis = show;
     }
@@ -219,7 +213,6 @@ class ChartRenderer {
         var yMode = _yMode;
         var sessMin = _sessMin;
         var sessMax = _sessMax;
-        var axisFont = _axisFont;
         if (_count < 2) {
             return;
         }
@@ -242,80 +235,26 @@ class ChartRenderer {
         var span = hi - lo;
         if (span < 1.0) { span = 1.0; }
 
-        // Reserve a gutter for the axis labels; the plot uses what is left.
-        var ah = Graphics.getFontAscent(axisFont);
-        var axisW = 0;
-        // MIN and MAX are named, not left as two bare numbers: which end of
-        // the axis is which is obvious on a chart you are staring at and not
-        // at all obvious on one you glance at mid-interval.
-        // Stacking the word over its number needs four line heights plus
-        // clearance; laying them side by side instead costs a third more
-        // gutter, and the gutter is width taken straight off the plot.
-        var stackLabels = h >= 9 * ah / 2;
-        var nameLabels = true;
-        if (_showAxis) {
-            // Measure what is actually drawn. Adding the word and the number
-            // separately leaves out the space between them, and the label
-            // then overhangs the gutter to the left — off the usable
-            // rectangle entirely on eight of the SDK's devices.
-            var numW = dc.getTextWidthInPixels("88", axisFont);
-            var wordW = dc.getTextWidthInPixels("MAX", axisFont);
-            if (stackLabels) {
-                axisW = ((numW > wordW) ? numW : wordW) + 4;
-            } else {
-                axisW = dc.getTextWidthInPixels("MAX 88", axisFont) + 4;
-                if (axisW > w / 4) {
-                    // Short and wide: side by side, the words cost a third of
-                    // the plot. The numbers are the data and the words are
-                    // only a convenience, so the convenience goes first.
-                    nameLabels = false;
-                    axisW = numW + 4;
-                }
-            }
-        }
-        var px0 = x + axisW;
-        var pw = w - axisW;
-        if (pw < 20) {
-            px0 = x;
-            pw = w;
-            axisW = 0;
-        }
-
+        var px0 = x;
+        var pw = w;
+        var baseY = y + h;
         var oldest = (_count < _size) ? 0 : _head;
         var stepX = pw.toFloat() / (_size - 1);
-        var baseY = y + h;
 
-        // Axis: bounds top and bottom, plus a midline for reference.
-        var mid = (lo + hi) / 2.0;
-        dc.setPenWidth(1);
-        if (axisW > 0) {
+        // Gridlines at the bounds and the midpoint. The bounds used to be
+        // labelled here, in a gutter cut out of the plot. They are not any
+        // more: the gutter was sized by the axis font, which is the smallest
+        // font on the screen, and on an Edge that made the two numbers that
+        // define the whole vertical scale the least legible thing in the
+        // field. They are cells in the grid below the chart now, at the same
+        // size as every other metric, and the plot gets its full width back.
+        if (_showAxis) {
+            dc.setPenWidth(1);
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawLine(px0, y, px0 + pw, y);
             dc.drawLine(px0, baseY, px0 + pw, baseY);
-            var midY = toY(mid, lo, span, y, h);
+            var midY = toY((lo + hi) / 2.0, lo, span, y, h);
             dc.drawLine(px0, midY, px0 + pw, midY);
-
-            var lx = px0 - 3;
-            if (stackLabels) {
-                dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(lx, y, axisFont, "MAX", Graphics.TEXT_JUSTIFY_RIGHT);
-                dc.drawText(lx, baseY - 2 * ah, axisFont, "MIN",
-                    Graphics.TEXT_JUSTIFY_RIGHT);
-                dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(lx, y + ah, axisFont, hi.format("%d"),
-                    Graphics.TEXT_JUSTIFY_RIGHT);
-                dc.drawText(lx, baseY - ah, axisFont, lo.format("%d"),
-                    Graphics.TEXT_JUSTIFY_RIGHT);
-            } else {
-                // Too short to stack: word and number share a line, or the
-                // number goes alone where the words will not fit.
-                var top = nameLabels ? "MAX " + hi.format("%d") : hi.format("%d");
-                var bot = nameLabels ? "MIN " + lo.format("%d") : lo.format("%d");
-                dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(lx, y, axisFont, top, Graphics.TEXT_JUSTIFY_RIGHT);
-                dc.drawText(lx, baseY - ah, axisFont, bot,
-                    Graphics.TEXT_JUSTIFY_RIGHT);
-            }
         }
 
         // Lap markers, under everything else.

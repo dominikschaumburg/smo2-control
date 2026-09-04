@@ -232,10 +232,33 @@ Drei-Feld-Layouts misst auf einer FR970 454 × 158 px, breiter als der
 Vollbildschirm einer fenix 7S, aber dort sucht niemand nach einem Verlauf.
 45 % der Höhe lässt eine Hälfte durch und schließt ein Drittel aus.
 
-#### Das Drittel-Raster
+#### Das Raster
 
-Wo das Feld *der* Bildschirm ist, wird die Höhe gedrittelt: Metriken im obersten
-Drittel, das Diagramm im mittleren, Metriken im unteren.
+Wo das Feld *der* Bildschirm ist, rahmen vier Metrikzeilen das Diagramm: das
+Zustandslabel und der Wert darüber, die Rate und die externe Last darunter. Wo
+sie sitzen, hängt von der Bildschirmform ab, und die Regel lautet: **weg von
+der bindenden Randbedingung packen**.
+
+Auf einem **Rechteck** gibt es außer den Kanten keine Randbedingung, also
+werden die Zeilen an Ober- und Unterkante geheftet und das Diagramm bekommt
+alles dazwischen. Ein Rechteck zu dritteln war der erste Versuch und ist auf
+einem Radcomputer falsch, aus einem Grund, den ein Screenshot sofort zeigt:
+Eine Edge 1040 ist 282 × 470 px, ein Drittel also 156 px hoch, während zwei
+Textzeilen etwa 100 brauchen. Das Diagramm bekam einen 148-px-Streifen in einem
+470-px-Bildschirm, und rund 90 px am unteren Rand waren einfach schwarz. An die
+Kanten gepackt bekommt dasselbe Gerät ein 279 px hohes Diagramm.
+
+Auf einem **runden** Bildschirm ist die Sehne die Randbedingung, also gehen die
+Zeilen nach innen und die Kreisspitzen werden abgeschrieben. Die Höhe wird
+gedrittelt: Metriken im obersten Drittel, das Diagramm im mittleren, Metriken
+im unteren.
+
+Ein rundes Display hat in einem äußeren Drittel Platz für genau zwei Zeilen.
+Das untere Drittel trägt deshalb Rate und Last gemeinsam auf einer Zeile, je an
+einem Ende der Sehne, und darunter **zwei** Zellen statt drei. Bei drei bleiben
+der unteren Zeile 83 px Sehne pro Zelle, und die Zahlen kommen genau so groß
+heraus wie vorher in der Gutter, was der ganze Kritikpunkt war. Die Zeile der
+Rate sitzt näher an der Mitte und ist breit genug für beides.
 
 Gelayoutet wird dabei gegen das ganze Feld und nicht gegen das eingeschriebene
 Rechteck, und genau das ist der Punkt. Das Rechteck existiert, damit *ein* Block
@@ -267,8 +290,17 @@ Die Rate ist auf drei Viertel der Werthöhe gedeckelt, nicht auf das Drittel.
 Ihre Zeichenkette ist dreimal so lang, bei gleicher Höhe braucht sie also
 dreimal so viel Farbe und liest sich als Schlagzeile. Die Schlagzeile ist SmO₂.
 
+Die Höhendeckel des rechteckigen Layouts sind Bruchteile des Feldes und nicht
+eines Drittels, damit ein hoher Bildschirm keine absurd große Schrift erzeugt.
+Auf jeder aktuellen Edge greifen sie nicht einmal: Die größte Zahlenschrift des
+Geräts ist niedriger als der Deckel, die Schrift ist also so groß, wie das
+Gerät hergibt, und der Rest gehört dem Diagramm.
+
 Alles, was kleiner ist als der ganze Bildschirm, fällt auf eine Kopf- und eine
-Fußzeile im nutzbaren Rechteck zurück: Wert neben Zustand, Rate neben Last.
+Fußzeile im nutzbaren Rechteck zurück: Wert neben Zustand, Rate neben Last, und
+dazwischen die Range als `41-71`, wo die beiden Platz dafür lassen. Letzteres
+ist keine Dekoration: Ohne sie hat ein kurzes Diagramm überhaupt keine
+vertikale Skala.
 
 #### Was darin steht
 
@@ -280,15 +312,16 @@ Fußzeile im nutzbaren Rechteck zurück: Wert neben Zustand, Rate neben Last.
   Segment in der Farbe seines Zustands, und die **Fläche darunter gefüllt** in
   einer abgedunkelten Variante derselben Farbe. Eine dünne Linie muss man
   suchen, eine gefüllte Fläche sieht man einfach.
-- **Achsen**: Gitterlinien oben, in der Mitte und unten, die Grenzwerte links
-  ausdrücklich mit **MAX** und **MIN** beschriftet. Welches Ende welches ist,
-  ist offensichtlich, wenn man das Diagramm betrachtet, und überhaupt nicht
-  offensichtlich, wenn man mitten im Intervall hinschaut. Drei Anordnungen, je
-  nach Platz: Die Wörter stehen über ihren Zahlen, wo die Höhe dafür reicht,
-  daneben, wo nicht, und fallen ganz weg, wo sie nebeneinander mehr als ein
-  Viertel der Plotbreite kosten würden. Letzteres ist das halbseitige
-  Datenfeld, wo die Benennung ein Drittel des Diagramms gekostet hat, um etwas
-  zu sagen, was die Zahlen schon sagten.
+- **Gitterlinien** oben, in der Mitte und unten. Keine Beschriftung im Plot:
+  die Grenzwerte sind Zellen im Raster darunter.
+- **Zellenraster** unter dem Diagramm, jede Zelle eine kleine graue
+  Beschriftung über der Zahl: **MIN** und **MAX**, dazu **PACE**, wo eine
+  Spalte dafür ist. Dort standen die Grenzwerte früher nicht: sie steckten in
+  einer aus dem linken Diagrammrand geschnittenen Gutter, in der Achsenschrift.
+  Damit waren die zwei Zahlen, an denen das ganze Diagramm gemessen wird, der
+  kleinste Text im Feld, auf einer Edge 11 px, und sie kosteten den Plot ein
+  Fünftel seiner Breite. Im Raster sind sie so groß wie jede andere Metrik, und
+  der Plot bekommt seine volle Breite zurück.
 - **Lap-Marker** als vertikale Linien
 - **Prognose-Nadel**: ein Dreieck am rechten Rand, das auf die Höhe zeigt, auf
   die der Trend zuläuft, in der Zustandsfarbe. Es liest sich wie ein Zeiger auf

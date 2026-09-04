@@ -75,6 +75,9 @@ class SmO2ControlView extends WatchUi.DataField {
     // flag that the colour already carries.
     private const LOAD_SAMPLE = "88:88 DEC";
 
+    // Widest caption in the cell grid under the chart.
+    private const CELL_CAPTION_SAMPLE = "PACE";
+
     // Font ladders, widest first, shared by every "largest that fits" search.
     private const NUMBER_FONTS = [
         Graphics.FONT_NUMBER_THAI_HOT,
@@ -155,6 +158,18 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _stateFont as FontDefinition? = null;
     private var _rateFont as FontDefinition = Graphics.FONT_XTINY;
     private var _loadFont as FontDefinition? = null;
+
+    // The grid of cells under the chart: MIN, MAX and the external load, each
+    // a small grey caption over a legible number.
+    private var _cellFont as FontDefinition = Graphics.FONT_XTINY;
+    private var _capFont as FontDefinition = Graphics.FONT_XTINY;
+    private var _cellY as Number = 0;
+    private var _cellX as Number = 0;
+    private var _cellW as Number = 0;
+    private var _cells as Number = 0;
+    private var _rateW as Number = 0;
+    private var _paceInCells as Boolean = true;
+    private var _showRange as Boolean = false;
     private var _stateY as Number = 0;
     private var _valueY as Number = 0;
     private var _rateY as Number = 0;
@@ -313,9 +328,8 @@ class SmO2ControlView extends WatchUi.DataField {
 
         if (_tier == TIER_FULL) {
             _labelFont = Graphics.FONT_XTINY;
-            _chart.setAxisFont(_labelFont);
             _chart.setShowAxis(true);
-            _stacked = layoutThirds(dc) || layoutTwoRow(dc);
+            _stacked = layoutEdges(dc) || layoutThirds(dc) || layoutTwoRow(dc);
         } else {
             // No chart below the half-screen sizes. A sparkline squeezed into
             // a quarter of a round watch is decoration: too few pixels per
@@ -350,6 +364,153 @@ class SmO2ControlView extends WatchUi.DataField {
             _dotY = _blockTop + vAsc / 2;
             _secondY = _blockTop + vAsc + PAD;
         }
+    }
+
+    //! Rectangular full-screen field: metric rows pinned to the top and
+    //! bottom edges, chart taking everything between them.
+    //!
+    //! The rule is to pack away from whatever the binding constraint is. On a
+    //! round screen that is the chord, so the rows go inwards and the tips are
+    //! written off (see layoutThirds). A rectangle has no chord, so there is
+    //! nothing to write off and the rows belong on the edges.
+    //!
+    //! Splitting a rectangle into thirds instead was the first attempt and is
+    //! wrong on a bike computer for a reason that is plain in a screenshot: an
+    //! Edge 1040 is 282 x 470, so a third is 156 px tall while two rows of
+    //! text need about 100. The chart got a 148 px band in a 470 px screen and
+    //! roughly 90 px at the bottom was simply black. Here the rows take what
+    //! they need and the chart takes the remainder, which on the same device
+    //! is 279 px instead of 148.
+    //!
+    //! Height caps are fractions of the field rather than of a band, so a tall
+    //! screen does not produce absurd text. On every current Edge they do not
+    //! even bind: the device's largest number font is shorter than the cap, so
+    //! the text is as large as the device offers and the chart gets the rest.
+    private function layoutEdges(dc as Dc) as Boolean {
+        if (_cr > 0.0) {
+            return false;                  // round: layoutThirds owns this
+        }
+        var screen = System.getDeviceSettings();
+        if (_h * 10 < screen.screenHeight * 9 || _w * 10 < screen.screenWidth * 9) {
+            return false;
+        }
+
+        var availW = _w - 2 * PAD;
+        var valueFont = fitByWidth(dc, NUMBER_FONTS, metricSample(), availW,
+            _h / 5);
+        var stateFont = fitByWidth(dc, TEXT_FONTS, Palette.widestLabel(),
+            availW - Graphics.getFontAscent(Graphics.FONT_LARGE) - PAD, _h / 10);
+        if (valueFont == null || stateFont == null) {
+            return false;
+        }
+        var valueAsc = Graphics.getFontAscent(valueFont as FontDefinition);
+        var stateAsc = Graphics.getFontAscent(stateFont as FontDefinition);
+
+        // Same proportion rule as the round layout: the rate string is three
+        // times as long as the value, so at equal heights it reads as the
+        // headline, and SmO2 is the headline.
+        var rateFont = fitByWidth(dc, TEXT_FONTS, "-8.888%/s", availW,
+            valueAsc * 3 / 4);
+        if (rateFont == null) {
+            return false;
+        }
+        var rateAsc = Graphics.getFontAscent(rateFont as FontDefinition);
+
+        var cellH = planCells(dc, _h - PAD, _h / 8, _showPace ? 3 : 2, false);
+        if (cellH == 0) {
+            return false;
+        }
+        _paceInCells = _showPace;
+
+        var topH = 3 * PAD + stateAsc + valueAsc;
+        // Three pads, not two: at two the rate's baseline and the caption
+        // row's top edge land on the same pixel.
+        var botH = 3 * PAD + rateAsc + cellH;
+        var chartH = _h - topH - botH - 2 * PAD;
+        if (chartH < FULL_MIN_H) {
+            return false;
+        }
+
+        _stateFont = stateFont;
+        _valueFont = valueFont as FontDefinition;
+        _rateFont = rateFont as FontDefinition;
+        _dotR = stateAsc / 2;
+
+        _stateY = PAD;
+        _valueY = 2 * PAD + stateAsc;
+        _rateY = _h - botH + PAD;
+
+        _chartX = PAD;
+        _chartY = topH + PAD;
+        _chartW = availW;
+        _chartH = chartH;
+        return true;
+    }
+
+    //! Lay out the cell grid under the chart: MIN, MAX, and the external
+    //! load when there is a column for it. Each cell is a small grey caption
+    //! over the number, which is narrower than putting them on one line and
+    //! reads like a dashboard rather than like a sentence.
+    //!
+    //! `anchor` is the row's top edge when `fromTop`, otherwise its bottom.
+    //! The chord is re-measured for every candidate font, because the row's
+    //! height depends on the font and the chord depends on the height. The
+    //! first version measured down to the bottom of the screen instead, which
+    //! is a chord of 73 px on an FR970 and rejected every arrangement.
+    //!
+    //! Sets _cells, _cellW, _cellX, _capFont and _cellFont, and returns the
+    //! row height. Returns 0 if nothing fits, which is the signal to try a
+    //! different arrangement.
+    private function planCells(dc as Dc, anchor as Number, maxAsc as Number,
+                               nCells as Number, fromTop as Boolean) as Number {
+        _capFont = Graphics.FONT_XTINY;
+        var capAsc = Graphics.getFontAscent(_capFont);
+        var capW = dc.getTextWidthInPixels(CELL_CAPTION_SAMPLE, _capFont);
+        var sample = (nCells > 2) ? "88:88" : "88.8";
+
+        for (var i = 0; i < TEXT_FONTS.size(); i++) {
+            var f = TEXT_FONTS[i];
+            var asc = Graphics.getFontAscent(f);
+            if (asc > maxAsc || asc < capAsc) {
+                continue;
+            }
+            var rowH = capAsc + asc;
+            var top = fromTop ? anchor : anchor - rowH;
+            if (top < PAD || top + rowH > _h - PAD) {
+                continue;
+            }
+            var avail = chordAt(top, top + rowH) - 2 * PAD;
+            if (avail <= 0) {
+                continue;
+            }
+            var cw = avail / nCells;
+            var inner = cw - 2 * PAD;
+            if (capW > inner || dc.getTextWidthInPixels(sample, f) > inner) {
+                continue;
+            }
+            _cells = nCells;
+            _cellFont = f;
+            _cellW = cw;
+            _cellX = _cx.toNumber() - avail / 2;
+            _cellY = top;
+            return rowH;
+        }
+        return 0;
+    }
+
+    //! Largest font from `ladder` whose sample fits a width and a height.    //! Largest font from `ladder` whose sample fits a width and a height.
+    //! No chord involved, so this is only for rectangular screens.
+    private function fitByWidth(dc as Dc, ladder as Array<FontDefinition>,
+                                sample as String, availW as Number,
+                                maxAsc as Number) as FontDefinition? {
+        for (var i = 0; i < ladder.size(); i++) {
+            var f = ladder[i];
+            if (Graphics.getFontAscent(f) <= maxAsc
+                && dc.getTextWidthInPixels(sample, f) <= availW) {
+                return f;
+            }
+        }
+        return null;
     }
 
     //! Thirds grid: metrics in the top third, the chart in the middle third,
@@ -437,26 +598,34 @@ class SmO2ControlView extends WatchUi.DataField {
         if (rateCap > cap) { rateCap = cap; }
         var rateTop = 2 * band + PAD;
         var rateFont = null as FontDefinition?;
-        var loadFont = null as FontDefinition?;
-        var loadTop = 0;
+        var capAsc = Graphics.getFontAscent(Graphics.FONT_XTINY);
+        var rateSample = _showPace ? "-8.888%/s 88:88" : "-8.888%/s";
         for (var i = 0; i < TEXT_FONTS.size() && rateFont == null; i++) {
             var rf = TEXT_FONTS[i];
             var rAsc = Graphics.getFontAscent(rf);
             if (rAsc > rateCap
-                || !fitsChord(dc, rf, "-8.888%/s", rateTop, rateTop + rAsc,
+                || !fitsChord(dc, rf, rateSample, rateTop, rateTop + rAsc,
                               false)) {
                 continue;
             }
-            var lTop = rateTop + rAsc + PAD;
-            var lf = rowFontDown(dc, TEXT_FONTS, LOAD_SAMPLE, lTop,
-                _h - PAD - lTop);
-            if (lf != null) {
+            // The cell grid goes under the rate. Its chord is measured over
+            // the whole two-line cell, so a font that only fits the caption
+            // line is rejected.
+            //
+            // Only two cells here: MIN and MAX. A round screen has room for
+            // exactly two rows in an outer third, and at three cells the
+            // bottom row is 83 px of chord per cell and the numbers come out
+            // at the same size they were in the gutter, which was the
+            // complaint. The pace shares the rate's row instead, which is
+            // wide enough for both because it sits nearer the middle.
+            var cTop = rateTop + rAsc + PAD;
+            if (planCells(dc, cTop, _h - PAD - cTop - capAsc, 2, true) > 0) {
                 rateFont = rf;
-                loadFont = lf;
-                loadTop = lTop;
+                _rateW = chordAt(rateTop, rateTop + rAsc) - 2 * PAD;
+                _paceInCells = false;
             }
         }
-        if (rateFont == null || loadFont == null) {
+        if (rateFont == null) {
             return false;
         }
 
@@ -469,11 +638,7 @@ class SmO2ControlView extends WatchUi.DataField {
         // live at the left edge of the chart rectangle and at its vertical
         // extremes, which is the one place the chord is tightest, and at one
         // pad they sit close enough to the bezel to read as clipped.
-        var chord = slabWidth(chartTop, chartBottom);
-        if (chord <= 0) {
-            chord = _w;                    // rectangular screen: all of it
-        }
-        var chordW = chord - 8 * PAD;
+        var chordW = chordAt(chartTop, chartBottom) - 8 * PAD;
         if (chordW < FULL_MIN_W) {
             return false;
         }
@@ -481,13 +646,11 @@ class SmO2ControlView extends WatchUi.DataField {
         _stateFont = stateFont;
         _valueFont = valueFont as FontDefinition;
         _rateFont = rateFont as FontDefinition;
-        _loadFont = loadFont;
         _dotR = stateAsc / 2;
 
         _stateY = valueTop - PAD - stateAsc;
         _valueY = valueTop;
         _rateY = rateTop;
-        _loadY = loadTop;
 
         _chartX = _cx.toNumber() - chordW / 2;
         _chartY = chartTop;
@@ -523,6 +686,17 @@ class SmO2ControlView extends WatchUi.DataField {
         _valueY = _uy + PAD;
         _rateY = _uy + _uh - PAD - labelH;
         _loadY = _rateY;
+
+        // The scale used to be printed in a gutter inside the chart. It is a
+        // cell grid under the chart now, and this layout has no room for one,
+        // so the range goes in the middle of the footer as "41-71" when the
+        // rate and the load leave space for it. Without it a short chart has
+        // no vertical scale at all.
+        var footW = dc.getTextWidthInPixels("-8.888%/s", _labelFont)
+                    + dc.getTextWidthInPixels(LOAD_SAMPLE, _labelFont)
+                    + dc.getTextWidthInPixels("88-88", _labelFont)
+                    + 4 * PAD;
+        _showRange = footW <= _uw - 2 * PAD;
         _chartX = _ux + PAD;
         _chartY = _uy + PAD + _headH + PAD;
         _chartW = _uw - 2 * PAD;
@@ -573,15 +747,11 @@ class SmO2ControlView extends WatchUi.DataField {
     private function fitsChord(dc as Dc, font as FontDefinition,
                                sample as String, yTop as Number,
                                yBot as Number, withDot as Boolean) as Boolean {
-        var chord = slabWidth(yTop, yBot);
-        if (chord <= 0) {
-            chord = _w;                    // rectangular screen: all of it
-        }
         var need = dc.getTextWidthInPixels(sample, font) + 2 * PAD;
         if (withDot) {
             need += Graphics.getFontAscent(font) + PAD;
         }
-        return need <= chord;
+        return need <= chordAt(yTop, yBot);
     }
 
     //! Clear air between the light and the digits    //! Clear air between the light and the digits, proportional to the disc so
@@ -777,10 +947,16 @@ class SmO2ControlView extends WatchUi.DataField {
     //! than enough for one centred line of text, and using it is what lets
     //! the value inside the rectangle have the whole width to itself.
     //!
-    //! Returns 0 on a rectangular screen, where no such band exists.
-    private function slabWidth(yTop as Number, yBot as Number) as Number {
+    //! Returns the full field width on a rectangular screen, where there is
+    //! no circle to measure, and 0 when the band lies off the glass entirely.
+    //! Those two cases have to be told apart: conflating them as "0 means all
+    //! of it" put the bottom row off the display on the Venu 3, whose
+    //! full-screen field sits at x = -6, y = 5 rather than at the origin, so
+    //! the circle is not centred on the field and a band that is fine on an
+    //! FR970 is past the edge there.
+    private function chordAt(yTop as Number, yBot as Number) as Number {
         if (_cr <= 0.0) {
-            return 0;
+            return _w;
         }
         // The binding edge is whichever is further from the centre line.
         var d1 = (yTop - _cy).abs();
@@ -998,23 +1174,15 @@ class SmO2ControlView extends WatchUi.DataField {
 
         var stateColor = (_dispState == STATE_UNKNOWN) ? fg : Palette.forState(_dispState);
         var stateFont = (_stateFont == null) ? _labelFont : _stateFont as FontDefinition;
-        var loadFont = (_loadFont == null) ? _labelFont : _loadFont as FontDefinition;
 
         _chart.setBounds(_yAxisMode, rangeMin(), rangeMax());
         _chart.draw(dc, _chartX, _chartY, _chartW, _chartH, _dispPrediction, fg);
 
         var state = statusText();
         var rate = trendText();
-        var load = _paceText;
-        if (_decoupled) {
-            load += " DEC";
-        }
-        var loadColor = _decoupled ? Palette.forState(STATE_OVERSHOOT) : fg;
 
         if (_stacked) {
-            // Four centred rows. The state light and the load sit in the caps
-            // of the circle that the inscribed rectangle throws away, so the
-            // value and the chart between them keep the full width.
+            // Centred rows framing the chart, plus the cell grid under it.
             var mid = _cx.toNumber();
             drawStateRow(dc, stateColor, bg, mid,
                 _stateY + Graphics.getFontAscent(stateFont) / 2, state,
@@ -1023,16 +1191,37 @@ class SmO2ControlView extends WatchUi.DataField {
             dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(mid, _valueY, _valueFont, valueText(),
                 Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(mid, _rateY, _rateFont, rate,
-                Graphics.TEXT_JUSTIFY_CENTER);
 
-            if (_showPace) {
-                dc.setColor(loadColor, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(mid, _loadY, loadFont, load,
+            if (_paceInCells) {
+                dc.drawText(mid, _rateY, _rateFont, rate,
                     Graphics.TEXT_JUSTIFY_CENTER);
+            } else {
+                // Rate and load share the row, one against each end of the
+                // chord. This is the round layout: the row sits near the
+                // middle of the circle and is wide enough for both, which
+                // frees the row below it for MIN and MAX at a legible size.
+                var l = mid - _rateW / 2;
+                var r = mid + _rateW / 2;
+                dc.drawText(l, _rateY, _rateFont, rate,
+                    Graphics.TEXT_JUSTIFY_LEFT);
+                if (_showPace) {
+                    dc.setColor(_decoupled ? Palette.forState(STATE_OVERSHOOT) : fg,
+                        Graphics.COLOR_TRANSPARENT);
+                    dc.drawText(r, _rateY, _rateFont, _paceText,
+                        Graphics.TEXT_JUSTIFY_RIGHT);
+                }
             }
+
+            drawCells(dc, fg);
             return;
         }
+
+        var loadFont = _labelFont;
+        var load = _paceText;
+        if (_decoupled) {
+            load += " DEC";
+        }
+        var loadColor = _decoupled ? Palette.forState(STATE_OVERSHOOT) : fg;
 
         // Two rows: value beside state, rate beside load.
         var left = _ux + PAD;
@@ -1048,9 +1237,66 @@ class SmO2ControlView extends WatchUi.DataField {
         dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(left, _rateY, _rateFont, rate, Graphics.TEXT_JUSTIFY_LEFT);
 
+        if (_showRange) {
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(_ux + _uw / 2, _rateY, _labelFont, rangeText(),
+                Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
         if (_showPace) {
             dc.setColor(loadColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(right, _loadY, loadFont, load, Graphics.TEXT_JUSTIFY_RIGHT);
+        }
+    }
+
+    //! The chart's vertical range as one short string, for the layout that
+    //! has no room for the cell grid.
+    private function rangeText() as String {
+        var lo = rangeMin();
+        var hi = rangeMax();
+        if (lo == null || hi == null) {
+            return "--";
+        }
+        return (lo as Float).format("%d") + "-" + (hi as Float).format("%d");
+    }
+
+    //! The cell grid under the chart: MIN, MAX and the external load, each a
+    //! grey caption over the number.
+    //!
+    //! MIN and MAX define the vertical scale of the chart, so they used to be
+    //! printed in a gutter cut out of its left edge, in the axis font. That
+    //! made the two numbers the whole chart is measured against the smallest
+    //! text in the field, which on an Edge is 11 px. Here they are the same
+    //! size as every other metric, and the chart gets the gutter back.
+    private function drawCells(dc as Dc, fg as Number) as Void {
+        var capAsc = Graphics.getFontAscent(_capFont);
+        var lo = rangeMin();
+        var hi = rangeMax();
+
+        for (var i = 0; i < _cells; i++) {
+            var cx = _cellX + i * _cellW + _cellW / 2;
+            var caption = "MIN";
+            var text = (lo == null) ? "--" : (lo as Float).format("%d");
+            var color = fg;
+            if (i == 1) {
+                caption = "MAX";
+                text = (hi == null) ? "--" : (hi as Float).format("%d");
+            } else if (i == 2) {
+                caption = _usePower ? "PWR" : "PACE";
+                text = _paceText;
+                if (_decoupled) {
+                    // The cell is sized once for its widest caption, so the
+                    // flag cannot be a word here. Red is the flag.
+                    color = Palette.forState(STATE_OVERSHOOT);
+                }
+            }
+
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, _cellY, _capFont, caption,
+                Graphics.TEXT_JUSTIFY_CENTER);
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, _cellY + capAsc, _cellFont, text,
+                Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 

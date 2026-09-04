@@ -219,10 +219,32 @@ Size alone is the wrong test. The middle strip of a three-up layout is
 where anyone goes looking for a trend. 45 % of the height clears a half and
 excludes a third.
 
-#### The thirds grid
+#### The grid
 
-Where the field *is* the screen, the height is divided into three: metrics in
-the top third, the chart in the middle third, metrics in the bottom third.
+Where the field *is* the screen, four metric rows frame the chart: the state
+label and the value above it, the rate and the external load below it. Where
+they sit depends on the screen shape, and the rule is to **pack away from
+whatever the binding constraint is**.
+
+On a **rectangle** there is no constraint but the edges, so the rows are pinned
+to the top and bottom and the chart takes everything between. Splitting a
+rectangle into thirds was the first attempt and is wrong on a bike computer for
+a reason that is plain in a screenshot: an Edge 1040 is 282 × 470 px, so a
+third is 156 px tall while two rows of text need about 100. The chart got a
+148 px band in a 470 px screen and roughly 90 px at the bottom was simply
+black. Packing to the edges gives the same device a 279 px chart.
+
+On a **round** screen the constraint is the chord, so the rows go inwards and
+the tips of the circle are written off. The height is divided into three:
+metrics in the top third, the chart in the middle third, metrics in the bottom
+third.
+
+A round screen has room for exactly two rows in an outer third, so the bottom
+third is the rate and the load sharing one row against each end of the chord,
+with **two** cells below them rather than three. At three the bottom row is
+83 px of chord per cell and the numbers come out the size they were in the
+gutter, which was the whole complaint. The rate's row sits nearer the middle
+and is wide enough for two things.
 
 This lays out against the whole field rather than against the inscribed
 rectangle, and that is the point. The rectangle exists so that one block of
@@ -252,8 +274,16 @@ The rate is capped at three quarters of the value's height rather than at the
 band. Its string is three times as long, so at equal heights it takes three
 times the ink and reads as the headline. SmO₂ is the headline.
 
+Height caps on the rectangular layout are fractions of the field rather than
+of a band, so a tall screen does not produce absurd text. On every current Edge
+they do not even bind: the device's largest number font is shorter than the cap,
+so the text is as large as the device offers and the chart gets the rest.
+
 Anything smaller than the whole screen falls back to one header row and one
-footer row inside the usable rectangle: value beside state, rate beside load.
+footer row inside the usable rectangle: value beside state, rate beside load,
+and the range as `41-71` between them where the two leave space for it. That
+last one is not decoration: without it a short chart has no vertical scale at
+all.
 
 #### What is in it
 
@@ -264,15 +294,16 @@ footer row inside the usable rectangle: value beside state, rate beside load.
   coloured by the state at that point, with the **area beneath it filled** in a
   darkened version of the same colour. A thin line has to be found; a filled
   shape is simply seen.
-- **Axes**: gridlines at the top, middle and bottom of the range, with the
-  bounds labelled **MAX** and **MIN** on the left. Which end is which is
-  obvious on a chart you are staring at and not at all obvious on one you
-  glance at mid-interval. Three arrangements, by what the space allows: the
-  words stack above their numbers where there is height, share a line where
-  there is not, and drop out entirely where a shared line would cost more than
-  a quarter of the plot width. That last case is the half-screen field, where
-  naming the bounds took a third of the chart to say something the numbers
-  already said.
+- **Gridlines** at the top, middle and bottom of the range. No labels in the
+  plot: the bounds are cells in the grid below it.
+- **Cell grid** under the chart, each cell a small grey caption over the
+  number: **MIN** and **MAX**, plus **PACE** where there is a column for it.
+  This is where the bounds used to be printed, in a gutter cut out of the
+  chart's left edge and set in the axis font. That made the two numbers the
+  whole chart is measured against the smallest text in the field, which on an
+  Edge is 11 px, and it cost the plot a fifth of its width to do so. In the
+  grid they are the same size as every other metric and the plot gets its full
+  width back.
 - **Lap markers** as vertical lines
 - **Forecast needle**: a triangle on the right-hand edge, pointing in at the
   level the trend is heading to, in the state colour. It reads the way a
