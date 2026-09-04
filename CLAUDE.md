@@ -8,10 +8,11 @@ A Garmin Connect IQ **data field** in Monkey C. Reads a Moxy muscle-oxygen
 sensor over ANT+ and classifies the athlete's SmO2 kinetics in real time:
 is the signal falling, holding at a plateau, still drifting, or recovering.
 
-The design rationale lives in [docs/concept.md](docs/concept.md); [README.md](README.md) is the
-user-facing summary. Read the header comment of a source file before changing
-it — they record *why* each approach was chosen, including approaches that were
-tried and rejected.
+[README.md](README.md) is the user-facing summary and
+[docs/functionality-en.md](docs/functionality-en.md) the complete behavioural
+reference. Read the header comment of a source file before changing it — they
+record *why* each approach was chosen, including approaches that were tried and
+rejected.
 
 ## Build and run
 

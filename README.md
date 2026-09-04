@@ -156,13 +156,15 @@ tools/
 
 ## Status
 
-v1 + v1.1 of the concept in [docs/concept.md](docs/concept.md): ANT link, kinetics, on-transient
-handling, state classification, three-tier display, FIT recording, reconnect,
-lap calibration, per-interval rates, forecast marker, and a stage-1 pace/power
-overlay with decoupling detection.
+Implemented: ANT link, kinetics, on-transient handling, state classification,
+three-tier display, FIT recording, reconnect, lap calibration, per-interval
+rates, forecast marker, and a pace/power overlay with decoupling detection.
 
-Not yet implemented (v2 in the concept): a modelled "SmO2 cost per pace unit",
-and recovery overshoot analysis.
+Not yet implemented: a modelled "SmO2 cost per pace unit", and recovery
+overshoot analysis.
+
+Full behavioural reference: [docs/functionality-en.md](docs/functionality-en.md)
+(also [in German](docs/functionality-de.md)).
 
 ## Licence
 

@@ -26,3 +26,6 @@ internal-mir/
 # ─── Python ───
 __pycache__/
 *.pyc
+
+# ─── Personal design notes, not published ───
+docs/concept.md
