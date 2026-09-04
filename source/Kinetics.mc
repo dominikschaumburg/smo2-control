@@ -7,22 +7,29 @@
 // forecast both fall out of the same model.
 //
 // But the Holt trend alone cannot answer the question this field exists for.
-// "Am I in steady state?" is decided by drifts on the order of 0.02–0.05 %/s,
-// which is below the noise floor of a reactive Holt trend — replaying synthetic
-// interval sessions through the model shows sustainable and unsustainable
-// intervals coming out indistinguishable. Slowing Holt down to compensate just
-// makes it lag through the whole interval instead.
+// On real Moxy data it swings past 0.15 %/s on half of all samples even inside
+// a rock-solid plateau — the signal genuinely moves that fast, so this is not a
+// smoothing problem and no threshold on it separates anything. Slowing Holt
+// down to compensate does not help either: a trend slow enough to resolve the
+// drift never settles within an interval, because its infinite tail keeps
+// carrying the on-transient forward.
 //
 // So there are two estimators on two timescales, which is what the kinetics
 // actually demand:
 //
 //   Holt trend (~5–15 s)   -> displayed rate, forecast, SCI
-//   Regression slope (45 s)-> the steady / drift / overshoot classification
+//   Regression slope (60 s)-> the steady / drift / overshoot classification
 //
 // The regression window is a plain least-squares fit over the smoothed level.
-// It costs one pass of ~45 multiply-adds per second, which is nothing, and it
+// It costs one pass of ~60 multiply-adds per second, which is nothing, and it
 // is dramatically more noise-resistant than any O(1) recursion at this
-// timescale. Validate changes with tools/kinetics_replay.py --synthetic.
+// timescale.
+//
+// 60 s is measured, not guessed. Across five real threshold sessions a shorter
+// window leaves the plateau band so loose (+/-0.08 %/s at 45 s) that genuine
+// drift disappears inside it; a longer one dilutes the on-transient into the
+// recovery that preceded it and stops detecting it at all. Validate any change
+// with tools/kinetics_replay.py against real .fit files, not just --synthetic.
 //
 // Both estimators carry their slope in %/s rather than %/update, because
 // compute() is not guaranteed to fire at exactly 1 Hz and the Moxy's own update
@@ -205,45 +212,55 @@ class Kinetics {
         _level = level;
         _lastMs = now;
 
+        // Everything below is decided from the regression slope, never from
+        // _trend. On real Moxy data the fast Holt trend swings past 0.15 %/s on
+        // half of all samples even inside a rock-solid plateau — the signal
+        // genuinely moves that fast, so it is not a smoothing problem and no
+        // threshold on it can separate anything.
+        _window.push(level, now / 1000.0);
+        _slowSlope = _window.slope();
+
+        if (!_window.isReady()) {
+            // Just after a restart we honestly do not know yet.
+            _state = STATE_ONKIN;
+            return;
+        }
+
+        var st = classify(_slowSlope);
+
         // Rapid desaturation at the start of an interval is the on-transient,
         // not a verdict about sustainability. Both a sustainable and an
         // unsustainable interval begin with a steep fall; what separates them
         // is what happens *after* it. Judging the fall itself as "overshoot"
         // marks every hard interval red for its first minute.
-        //
-        // So the transient gets its own state, and its steepness — which does
-        // track metabolic rate — is reported through the fast Holt trend.
-        var onKinRate = onKinThreshold();
-        if (_trend < -onKinRate) {
-            if (_trend < _peakTransient) {
-                _peakTransient = _trend;
+        if (st == STATE_ONKIN) {
+            if (_slowSlope < _peakTransient) {
+                _peakTransient = _slowSlope;
             }
             _windowDirty = true;
-            _slowSlope = _trend;
-            _state = STATE_ONKIN;
+        } else if (_windowDirty) {
+            // The fall is over. Restart the fit so the plateau question is
+            // answered from post-transient data only, and say ON-KIN until
+            // there is enough of it to answer with.
+            _windowDirty = false;
+            _window.clear();
             _window.push(level, now / 1000.0);
+            _state = STATE_ONKIN;
             return;
         }
 
-        if (_windowDirty) {
-            // The fall is over. Restart the fit so the plateau question is
-            // answered from post-transient data only.
-            _windowDirty = false;
-            _window.clear();
-        }
-
-        // The classification runs on the slow estimator, not on _trend.
-        _window.push(level, now / 1000.0);
-        _slowSlope = _window.slope();
-        _state = _window.isReady() ? classify(_slowSlope) : STATE_ONKIN;
+        _state = st;
     }
 
-    //! Slope magnitude above which we call it an on-transient rather than a
-    //! steady-state drift. Derived from thetaDrift rather than being its own
-    //! setting, so tuning the drift threshold scales this with it.
+    //! Slope steep enough to be an on-transient rather than a steady-state
+    //! drift. Derived from thetaDrift rather than being its own setting, so
+    //! tuning the drift threshold scales this with it.
+    //!
+    //! Measured across five threshold sessions: with a 60 s window the plateau
+    //! slope stays inside +/-0.06 %/s for its middle 80 %, while the
+    //! on-transient runs past -0.23 %/s. 2x thetaDrift lands between.
     private function onKinThreshold() as Float {
-        var t = _thetaDrift * 3.0;
-        return (t < 0.08) ? 0.08 : t;
+        return _thetaDrift * 2.0;
     }
 
     //! Steepest fast slope seen during the last transient, in %/s. Negative.
@@ -288,6 +305,7 @@ class Kinetics {
     private function classify(slope as Float) as SmO2State {
         var stable = _thetaStable;
         var drift = _thetaDrift;
+        var onKin = onKinThreshold();
 
         // Widen the band we are already inside; makes leaving a state harder
         // than staying in it.
@@ -298,12 +316,16 @@ class Kinetics {
             drift = drift * (1.0 + HYSTERESIS);
         } else if (_state == STATE_OVERSHOOT) {
             drift = drift * (1.0 - HYSTERESIS);
+            onKin = onKin * (1.0 + HYSTERESIS);
+        } else if (_state == STATE_ONKIN) {
+            onKin = onKin * (1.0 - HYSTERESIS);
         }
 
         if (slope > stable) { return STATE_REOXY; }
         if (slope >= -stable) { return STATE_STEADY; }
         if (slope >= -drift) { return STATE_CONTROL; }
-        return STATE_OVERSHOOT;
+        if (slope >= -onKin) { return STATE_OVERSHOOT; }
+        return STATE_ONKIN;
     }
 
     public function getLevel() as Float? {

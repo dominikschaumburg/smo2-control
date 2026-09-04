@@ -44,19 +44,22 @@ raw SmO2 (~1 Hz, noisy)
       +-- Holt double-exponential smoothing --> level, fast trend (%/s)
       |                                          `-- forecast, chart
       |
-      +-- 45 s rolling least-squares slope ----> steady-state classification
+      +-- 60 s rolling least-squares slope ----> steady-state classification
                                                   `-- the colour
 ```
 
 **Why not exponential smoothing for the classification too?** Not CPU cost — a
-45-sample regression is nothing. It is statistical. Distinguishing a plateau
-from a drift happens at 0.02–0.05 %/s. An exponential filter slow enough to
-resolve that never settles within a 3-minute interval, because it has an
-infinite tail and keeps carrying the on-transient forward. A finite window
-forgets the transient once it slides past. For "has the plateau arrived?",
-forgetting is exactly the feature you need. Measured on synthetic intervals:
-slow Holt gave −0.15 vs −0.19 %/s (indistinguishable), the regression gave
-−0.007 vs −0.033 (clean separation).
+60-sample regression is nothing. It is statistical. On real Moxy data the Holt
+trend swings past 0.15 %/s on half of all samples *inside a rock-solid plateau*;
+the signal genuinely moves that fast, so no threshold on it separates anything.
+Slowing it down does not help either: an exponential filter has an infinite tail
+and keeps carrying the on-transient forward, so it never settles within an
+interval. A finite window forgets the transient once it slides past, and for
+"has the plateau arrived?" forgetting is exactly the feature you need.
+
+All thresholds are measured against five real threshold sessions, not guessed.
+With a 60 s window the plateau slope stays inside ±0.06 %/s while the
+on-transient runs past −0.23 %/s.
 
 Everything is normalised **within** the session — baseline median, relaxing
 session min/max, first lap as a calibration interval — because absolute SmO2

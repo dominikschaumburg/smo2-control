@@ -61,8 +61,9 @@ REC_TIMESTAMP = 253
 REC_THB = 54
 REC_SMO2 = 57
 
-LAP_TIMESTAMP = 253      # lap end time
+LAP_TIMESTAMP = 253       # nominally the lap end time
 LAP_START_TIME = 2
+LAP_ELAPSED = 7           # total_elapsed_time, milliseconds
 
 
 class FitError(Exception):
@@ -103,19 +104,39 @@ class FitData:
     laps: list[tuple[float, float]] = dc_field(default_factory=list)  # (start, end)
     dev_names: dict[tuple[int, int], str] = dc_field(default_factory=dict)
 
+    def find_smo2_field(self) -> str | None:
+        """Pick the field holding SmO2, native first, else a developer field.
+
+        Third-party Moxy recorders name their field after the sensor, e.g.
+        "1st SmO2 Sensor 7929 on L. Leg" — the ID differs per sensor, so match
+        on the name rather than making the caller type it.
+        """
+        keys = self.available_fields()
+        if "smo2" in keys:
+            return "smo2"
+        cands = [k for k in keys
+                 if "smo2" in k.lower() and "thb" not in k.lower()]
+        if not cands:
+            return None
+        # Prefer the shortest name: "smo2" beats "smo2 trend", and a plain
+        # sensor field beats a derived one.
+        return min(cands, key=len)
+
     def smo2_series(self, prefer: str | None = None) -> list[tuple[float, float]]:
         """(seconds-from-start, SmO2 %) pairs, gaps dropped.
 
-        `prefer` names a developer field to use instead of the native one.
+        `prefer` names a developer field to use instead of auto-detection.
         """
-        key = prefer or "smo2"
+        key = prefer or self.find_smo2_field()
+        if key is None:
+            return []
         out: list[tuple[float, float]] = []
         t0: float | None = None
         for r in self.records:
             t = r.get("t")
             if t is None:
                 continue
-            v = r.get(key) if prefer else r.get("smo2")
+            v = r.get(key)
             if v is None:
                 continue
             if not 0.0 <= v <= 100.0:
@@ -276,9 +297,16 @@ def _read_data(buf: bytes, pos: int, mdef: MessageDef, data: FitData,
 
     elif g == MSG_LAP:
         start = values.get(LAP_START_TIME)
+        elapsed = values.get(LAP_ELAPSED)
         endt = values.get(LAP_TIMESTAMP)
-        if isinstance(start, int) and isinstance(endt, int):
-            data.laps.append((float(start), float(endt)))
+        if isinstance(start, int):
+            # Prefer start + elapsed. Not every writer sets lap.timestamp to
+            # the lap end — some Connect IQ recorders leave it at the file
+            # creation time, which would collapse every lap to zero length.
+            if isinstance(elapsed, (int, float)):
+                data.laps.append((float(start), float(start) + elapsed / 1000.0))
+            elif isinstance(endt, int) and endt > start:
+                data.laps.append((float(start), float(endt)))
 
     return pos
 

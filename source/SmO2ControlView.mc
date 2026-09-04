@@ -105,9 +105,9 @@ class SmO2ControlView extends WatchUi.DataField {
         return {
             :alpha          => numProp("smoothingAlpha100", 30) / 100.0,
             :beta           => numProp("smoothingBeta100", 15) / 100.0,
-            :thetaStable    => numProp("thetaStable1000", 20) / 1000.0,
-            :thetaDrift     => numProp("thetaDrift1000", 50) / 1000.0,
-            :steadyWindowSec=> numProp("steadyWindowSec", 45),
+            :thetaStable    => numProp("thetaStable1000", 60) / 1000.0,
+            :thetaDrift     => numProp("thetaDrift1000", 150) / 1000.0,
+            :steadyWindowSec=> numProp("steadyWindowSec", 60),
             :predictHorizon => numProp("predictHorizon", 15),
             :chartWindowSec => numProp("chartWindowSec", 90),
             :yAxisMode      => numProp("yAxisMode", 0),

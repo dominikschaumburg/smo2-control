@@ -33,18 +33,26 @@ simulator run sits in `SEARCH` forever — that is correct, not a bug. Live data
 needs SimulANT+ with an ANT USB stick.
 
 **2. A green build says nothing about the algorithm.** After touching
-`source/Kinetics.mc`, run:
+`source/Kinetics.mc`, run both references:
 
 ```bash
-./tools/kinetics_replay.py --synthetic
+./tools/kinetics_replay.py --synthetic      # ground truth, fast
+./tools/kinetics_replay.py ~/path/*.fit     # real sessions, authoritative
 ```
 
-`tools/kinetics_replay.py` is a Python port of the same model, checked against a
-synthetic session with known ground truth. **The invariant:** sustainable
-intervals (`work1`, `work2`) reach `STEADY` for a substantial share of their
-time (~35–40 %); unsustainable ones (`work3`, `work4`) essentially never do
-(~0–2 %). If that separation collapses, the change broke the classification
-even though it compiled. Keep the Python port in sync with the Monkey C.
+`tools/kinetics_replay.py` is a Python port of the same model. Keep it in sync.
+
+**The synthetic invariant:** sustainable intervals (`work1`, `work2`) reach
+`STEADY` ~55 % of their time; unsustainable ones (`work3`, `work4`) ~4 %.
+
+**The real-data invariant:** in a threshold session, work laps read `STEADY`
+45–80 % with `ON-KIN` covering the first minute, and recovery laps read `REOXY`
+50–80 %.
+
+Use real `.fit` files as the tiebreaker. An earlier synthetic generator was far
+too clean, and thresholds tuned against it were an order of magnitude too tight
+— every real interval came out as "never plateaued". Synthetic data can only
+catch regressions, it cannot calibrate.
 
 ## Architecture
 
@@ -63,22 +71,27 @@ even though it compiled. Keep the Python port in sync with the Monkey C.
 
 Two estimators on two timescales, in `Kinetics.mc`:
 
-- **Holt double-exponential** → level, fast trend (%/s), forecast. O(1).
-- **45 s rolling least-squares slope** → the state classification.
+- **Holt double-exponential** → level, forecast. O(1).
+- **60 s rolling least-squares slope** → the state classification, and the
+  displayed rate (a number that disagreed with the colour would just confuse).
 
-They are not interchangeable. Plateau-vs-drift is decided at 0.02–0.05 %/s. An
-exponential filter slow enough to resolve that never settles within an interval
-(infinite tail keeps carrying the on-transient forward); a finite window forgets
-the transient once it slides past. This was measured, not assumed — see the file
-header. Do not "simplify" the regression into an EWMA.
+They are not interchangeable. On real data the Holt trend exceeds 0.15 %/s on
+half of all samples inside a solid plateau, so no threshold on it separates
+anything. An exponential filter slow enough to resolve the drift never settles
+within an interval; a finite window forgets the transient once it slides past.
+Measured, not assumed. Do not "simplify" the regression into an EWMA.
+
+The 60 s window length is also measured: at 45 s the plateau band is so loose
+(±0.08 %/s) that real drift hides inside it; at 90 s the on-transient dilutes
+into the preceding recovery and stops being detected.
 
 ### On-transient handling
 
 Rapid desaturation at interval start gets its own state (`STATE_ONKIN`), and the
 regression window is restarted once the fall ends so the plateau question is
 answered from post-transient data only. Without this, every hard interval reads
-`OVER` for its first minute — including sustainable ones. Verified: `work1` went
-from OVER 44 % to OVER 2 % when this was added.
+`OVER` for its first minute — including sustainable ones. On/off detection runs
+off the regression slope (below `2 x thetaDrift`), never off the Holt trend.
 
 ### Rules that matter in a data field
 

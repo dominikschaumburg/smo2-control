@@ -86,7 +86,7 @@ DT_MAX = 5.0
 class SlopeWindow:
     """Rolling least-squares slope over a fixed window of smoothed values."""
 
-    def __init__(self, window_sec: int = 45):
+    def __init__(self, window_sec: int = 60):
         self.size = max(5, window_sec)
         self.buf: list[tuple[float, float]] = []
 
@@ -129,10 +129,10 @@ class Kinetics:
 
     alpha: float = 0.30
     beta: float = 0.15
-    theta_stable: float = 0.02
-    theta_drift: float = 0.05
+    theta_stable: float = 0.06
+    theta_drift: float = 0.15
     predict_horizon: float = 15.0
-    steady_window: int = 45
+    steady_window: int = 60
 
     level: float | None = None
     trend: float = 0.0
@@ -168,30 +168,39 @@ class Kinetics:
         self.level = level
         self._last_t = t
 
+        # Everything below is decided from the regression slope, never from
+        # self.trend. On real Moxy data the fast Holt trend swings past
+        # 0.15 %/s on half of all samples even inside a rock-solid plateau, so
+        # no threshold on it can separate anything.
+        self._win.push(level, t)
+        self.slow_slope = self._win.slope()
+
+        if not self._win.ready():
+            self.state = STATE_ONKIN     # just restarted; we do not know yet
+            return
+
+        st = self._classify(self.slow_slope)
+
         # Rapid desaturation at interval start is the on-transient, not a
         # verdict about sustainability: sustainable and unsustainable intervals
         # both begin with a steep fall. Judging the fall itself as "overshoot"
         # marks every hard interval red for its first minute.
-        on_kin = max(0.08, self.theta_drift * 3.0)
-        if self.trend < -on_kin:
-            self.peak_transient = min(self.peak_transient, self.trend)
+        if st == STATE_ONKIN:
+            self.peak_transient = min(self.peak_transient, self.slow_slope)
             self._window_dirty = True
-            self.slow_slope = self.trend
-            self.state = STATE_ONKIN
-            self._win.push(level, t)
-            return
-
-        if self._window_dirty:
+        elif self._window_dirty:
             # The fall is over: refit from post-transient data only.
             self._window_dirty = False
             self._win.clear()
+            self._win.push(level, t)
+            self.state = STATE_ONKIN
+            return
 
-        self._win.push(level, t)
-        self.slow_slope = self._win.slope()
-        self.state = self._classify(self.slow_slope) if self._win.ready() else STATE_ONKIN
+        self.state = st
 
     def _classify(self, slope: float) -> int:
         stable, drift = self.theta_stable, self.theta_drift
+        on_kin = self.theta_drift * 2.0
         if self.state == STATE_STEADY:
             stable *= 1.0 + HYSTERESIS
         elif self.state == STATE_CONTROL:
@@ -199,6 +208,9 @@ class Kinetics:
             drift *= 1.0 + HYSTERESIS
         elif self.state == STATE_OVERSHOOT:
             drift *= 1.0 - HYSTERESIS
+            on_kin *= 1.0 + HYSTERESIS
+        elif self.state == STATE_ONKIN:
+            on_kin *= 1.0 - HYSTERESIS
 
         if slope > stable:
             return STATE_REOXY
@@ -206,7 +218,9 @@ class Kinetics:
             return STATE_STEADY
         if slope >= -drift:
             return STATE_CONTROL
-        return STATE_OVERSHOOT
+        if slope >= -on_kin:
+            return STATE_OVERSHOOT
+        return STATE_ONKIN
 
     def prediction(self) -> float | None:
         if self.level is None or self.predict_horizon <= 0:
@@ -300,9 +314,10 @@ def read_fit(path: str, dev_field: str | None):
 
     # smo2_series() rebases time to the first usable sample; rebase the laps the
     # same way so the labels line up.
+    key = dev_field or data.find_smo2_field()
     t0 = None
     for r in data.records:
-        if r.get("t") is not None and r.get(dev_field or "smo2") is not None:
+        if r.get("t") is not None and r.get(key) is not None:
             t0 = r["t"]
             break
     labels = None
@@ -332,6 +347,11 @@ def synthetic(seed: int = 7) -> Iterator[tuple[float, float, str]]:
     Interval 3-4 are over the sustainable point: the plateau never arrives and
     SmO2 keeps sliding. A correct model must call the first two STEADY once the
     plateau is reached, and keep the last two in CONTROL/OVER.
+
+    The drift rates and the noise level are set to match what real Moxy data
+    actually does — an earlier version of this generator was far too clean, and
+    thresholds tuned against it were an order of magnitude too tight to survive
+    contact with a real session.
     """
     rng = random.Random(seed)
     baseline = 68.0
@@ -348,7 +368,7 @@ def synthetic(seed: int = 7) -> Iterator[tuple[float, float, str]]:
 
     yield from emit(baseline, 30.0, 60, "rest")
     for i, (plateau, drift) in enumerate(
-        [(42.0, 0.0), (40.0, 0.0), (34.0, -4.0), (30.0, -6.0)], start=1
+        [(42.0, 0.0), (40.0, 0.0), (38.0, -16.0), (36.0, -24.0)], start=1
     ):
         # Work: exponential fall to the plateau, plus a linear drift term for
         # the unsustainable intervals.
@@ -508,9 +528,9 @@ def main(argv: list[str]) -> int:
                         "native one (already-smoothed data)")
     p.add_argument("--alpha", type=float, default=0.30)
     p.add_argument("--beta", type=float, default=0.15)
-    p.add_argument("--theta-stable", type=float, default=0.02)
-    p.add_argument("--theta-drift", type=float, default=0.05)
-    p.add_argument("--steady-window", type=int, default=45)
+    p.add_argument("--theta-stable", type=float, default=0.06)
+    p.add_argument("--theta-drift", type=float, default=0.15)
+    p.add_argument("--steady-window", type=int, default=60)
     p.add_argument("--sweep", action="store_true",
                    help="grid search alpha/beta instead of a single run")
     args = p.parse_args(argv)

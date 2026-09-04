@@ -17,12 +17,16 @@
         <property id="predictHorizon"    type="number">15</property>
 
         <!-- Steady-state judgement: regression window and thresholds in %/s
-             (stored x1000). These are deliberately an order of magnitude below
-             the on-kinetics rates: a sustainable plateau drifts at well under
-             0.02 %/s, an unsustainable one at 0.03–0.05 %/s. -->
-        <property id="steadyWindowSec"   type="number">45</property>
-        <property id="thetaStable1000"   type="number">20</property>
-        <property id="thetaDrift1000"    type="number">50</property>
+             (stored x1000), measured across five real threshold sessions.
+             With a 60 s window the plateau slope sits within +/-0.06 %/s
+             (10th-90th percentile) while the on-transient runs past -0.23 %/s.
+             60 s is a deliberate optimum: a shorter window leaves the plateau
+             band too loose to notice real drift, a longer one dilutes the
+             transient into the recovery before it and stops detecting it.
+             On-kinetics fires at 2 x thetaDrift, so it scales with tuning. -->
+        <property id="steadyWindowSec"   type="number">60</property>
+        <property id="thetaStable1000"   type="number">60</property>
+        <property id="thetaDrift1000"    type="number">150</property>
 
         <!-- Display -->
         <property id="chartWindowSec"    type="number">90</property>
