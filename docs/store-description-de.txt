@@ -1,0 +1,93 @@
+SmO2 Control – Steady-State Intensity Monitor
+
+Ein Datenfeld für den Moxy-Muskeloxygenierungssensor, das eine einzige Frage in
+Echtzeit beantwortet: Bin ich im Steady State, oder driftet meine Sättigung
+weiter nach unten?
+
+DAS PROBLEM MIT ABSOLUTWERTEN
+
+"SmO2 = 34 %" hilft dir nicht. Der Absolutwert hängt von Sensorposition,
+Fettschichtdicke, Anpressdruck und Tagesform ab und ist zwischen Einheiten kaum
+vergleichbar. Aussagekräftig ist die Kinetik: Wie schnell fällt die Sättigung
+zu Intervallbeginn, erreicht sie ein Plateau, wie schnell erholt sie sich?
+
+FÜNF ZUSTÄNDE, FÜNF FARBEN
+
+ON-KIN (orange) – Rapide Desaturierung, der On-Transient zu Intervallbeginn
+OVER (rot) – Der Abfall setzt sich fort, du bist über dem nachhaltigen Punkt
+CONTROL (gelb) – Langsamer Abfall, fordernd aber kontrolliert
+STEADY (grün) – Flach, Angebot deckt Verbrauch, nachhaltig
+REOXY (blau) – Steigend, Erholung oder zu geringe Intensität
+
+Entscheidend ist ON-KIN gegen OVER. Jedes harte Intervall beginnt mit einem
+steilen Abfall, und der ist noch kein Urteil. Was ein nachhaltiges von einem
+überzogenen Intervall trennt, ist die Frage, ob danach das Plateau eintritt.
+Deshalb bekommt der Transient einen eigenen Zustand, statt jedes harte
+Intervall in seiner ersten Minute rot zu färben.
+
+AN ECHTEN DATEN KALIBRIERT
+
+Die Schwellen sind nicht geraten, sondern an fünf echten Schwellen-Einheiten
+gemessen: Innerhalb eines Plateaus bleibt die Steigung über ein
+60-Sekunden-Fenster innerhalb von ±0,06 %/s, während der On-Transient
+−0,23 %/s unterschreitet. Auch die Fensterlänge ist so bestimmt.
+
+ADAPTIVE ANZEIGE
+
+Das Feld passt sich seiner Größe an, in drei Stufen:
+
+Vollbild – Sparkline mit zustandsabhängig eingefärbten Segmenten, Lap-Markern,
+Kalibrierungsbändern und Prognose-Marker, dazu Wert, Zustand, Steigung, SmO2
+Control Index sowie Pace oder Power.
+Halbe Seite – Wert mit Trendpfeil plus Mini-Sparkline.
+Kleines Feld – Zustand als Hintergrundfarbe mit Wert und Trendpfeil.
+
+Farbenblind-Palette verfügbar.
+
+SESSION-INTERNE KALIBRIERUNG
+
+Baseline-Median der ersten Minute, rollendes Session-Min/Max mit langsamer
+Relaxation gegen Ausreißer, erster Lap als Referenzintervall, doppelter
+Lap-Druck als Reset nach Umsetzen des Sensors. Die Y-Achse skaliert automatisch
+auf die Session-Range statt auf 0–100 %.
+
+ENTKOPPLUNGSERKENNUNG
+
+Bleibt deine Pace oder Power über 30 Sekunden konstant, während die Sättigung
+weiter absinkt, meldet das Feld DECOUPLING. Das ist beginnende Ermüdung oder
+Effizienzverlust – in keinem der beiden Signale allein sichtbar.
+
+AUFZEICHNUNG FÜR DIE NACHANALYSE
+
+Pro Sekunde ins FIT: geglättete SmO2, Steigung in %/s, SmO2 Control Index,
+Zustand und Gesamthämoglobin, alles in Garmin Connect als Diagramm.
+Pro Runde: Desaturationsrate (Ende minus Start durch Lap-Dauer), steilste
+On-Kinetik-Steigung, Minimum und Maximum. Deine Intervallanalyse entsteht
+automatisch.
+
+WICHTIG VOR DER ERSTEN NUTZUNG
+
+Der Moxy darf nicht zusätzlich nativ in der Sensorliste deiner Uhr gekoppelt
+sein. Muskeloxygenierung war nie Teil der nativen Connect-IQ-Sensor-API, also
+öffnet dieses Feld einen eigenen ANT-Kanal. Ein Sensor kann nur einen Kanal
+halten – wer zuerst zugreift, blockiert den anderen. Entkopple den Moxy in den
+Uhr-Einstellungen, dann findet ihn das Feld selbst.
+
+Ungültige Messwerte und Umgebungslicht-Warnungen gelten als "keine Daten",
+niemals als 0 %. Bei Aussetzern friert die Trendberechnung ein, statt eine
+Steigung zu erfinden, und der Kanal verbindet sich selbsttätig neu.
+
+EINSTELLBAR
+
+Sensor-ID, Glättung, Prognosehorizont, Steady-State-Fenster, beide
+Zustandsschwellen, Diagrammfenster, Y-Achsen-Modus, Baseline-Dauer,
+Farbenblind-Modus, Pace-Anzeige und FIT-Aufzeichnung.
+
+Zum Abstimmen an den eigenen Intervallen enthält das Projekt-Repository ein
+Werkzeug, das dieselbe Berechnung offline auf .fit-Dateien anwendet.
+
+VORAUSSETZUNGEN
+
+Ein Moxy oder ein anderer Sensor mit ANT+ Muscle Oxygen Profil, sowie eine
+Garmin-Uhr mit ANT+-Funk: Forerunner 245 bis 970, Fenix 6 bis 8, Epix Gen 2,
+Enduro, MARQ Gen 2 und Edge 530 bis 1050.
