@@ -349,6 +349,19 @@ class Kinetics {
         return _state;
     }
 
+    //! Classify a slope with no hysteresis and no reference to the live state.
+    //! The chart uses this to colour a finished stretch of curve: hysteresis
+    //! exists to stop the *live* verdict flickering, and applying it to a
+    //! static shape would make a segment's colour depend on what came before
+    //! it rather than on what it is.
+    public function stateForSlope(slope as Float) as SmO2State {
+        if (slope > _thetaStable) { return STATE_REOXY; }
+        if (slope >= -_thetaStable) { return STATE_STEADY; }
+        if (slope >= -_thetaDrift) { return STATE_CONTROL; }
+        if (slope >= -onKinThreshold()) { return STATE_OVERSHOOT; }
+        return STATE_ONKIN;
+    }
+
     public function hasData() as Boolean {
         return _level != null;
     }

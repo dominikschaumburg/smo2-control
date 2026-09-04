@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SmO2 Control — store icon, 500 x 500.
+
+  One stroke tells the whole physiology: steep desaturation, transition into a
+  flat plateau, slight recovery rise at the end. The colour runs through the
+  app's own state palette in the same order the athlete meets it, so the icon
+  is a miniature of what the field actually draws on the watch.
+
+  Palette matches source/Palette.mc exactly:
+    OVER #FF3B30 · ON-KIN #FF8A00 · CONTROL #FFD600 · STEADY #00C853 · REOXY #00AAFF
+
+  The nabla marks the gradient — the slope is the metric, not the value.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+
+  <defs>
+    <!-- Progresses along the x axis, which the path traverses monotonically,
+         so each colour lands on the segment it belongs to. -->
+    <linearGradient id="kinetics" gradientUnits="userSpaceOnUse" x1="60" y1="0" x2="444" y2="0">
+      <stop offset="0.00" stop-color="#FF3B30"/>
+      <stop offset="0.14" stop-color="#FF6A1F"/>
+      <stop offset="0.25" stop-color="#FF8A00"/>
+      <stop offset="0.34" stop-color="#FFD600"/>
+      <stop offset="0.44" stop-color="#00C853"/>
+      <stop offset="0.85" stop-color="#00C853"/>
+      <stop offset="0.95" stop-color="#00AAFF"/>
+      <stop offset="1.00" stop-color="#00AAFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="500" height="500" rx="112" fill="#0E1218"/>
+
+  <!-- The trace. Fall -> knee -> plateau -> recovery, in one continuous stroke. -->
+  <path d="M 60 128
+           C 92 140, 118 232, 168 296
+           C 190 326, 208 334, 236 334
+           L 384 334
+           C 410 334, 424 320, 444 288"
+        fill="none"
+        stroke="url(#kinetics)"
+        stroke-width="36"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Nabla: the gradient operator. Drawn as a path rather than a glyph so it
+       renders identically without depending on an installed font. -->
+  <path d="M 74 414 L 118 414 L 96 452 Z"
+        fill="none"
+        stroke="#00C853"
+        stroke-width="9"
+        stroke-linejoin="round"/>
+
+  <text x="136" y="452"
+        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="60" font-weight="700" fill="#E6EDF3" letter-spacing="-1">SmO<tspan
+        font-size="42" dx="-2" dy="9">2</tspan></text>
+</svg>

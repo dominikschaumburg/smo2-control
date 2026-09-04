@@ -222,6 +222,20 @@ class Kinetics:
             return STATE_OVERSHOOT
         return STATE_ONKIN
 
+    def state_for_slope(self, slope: float) -> int:
+        """Classify with no hysteresis — for colouring a finished shape, where
+        a segment's colour must depend on what it is, not on what preceded it.
+        Mirrors Kinetics.stateForSlope()."""
+        if slope > self.theta_stable:
+            return STATE_REOXY
+        if slope >= -self.theta_stable:
+            return STATE_STEADY
+        if slope >= -self.theta_drift:
+            return STATE_CONTROL
+        if slope >= -self.theta_drift * 2.0:
+            return STATE_OVERSHOOT
+        return STATE_ONKIN
+
     def prediction(self) -> float | None:
         if self.level is None or self.predict_horizon <= 0:
             return None

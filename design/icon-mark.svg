@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SmO2 Control — launcher mark.
+
+  The same stroke as icon.svg, but without the wordmark and with a heavier
+  weight. Garmin launcher icons are 40 x 40 or 65 x 65 px; at that size any
+  lettering turns to mush, so only the shape survives — and the shape is the
+  part that carries the meaning anyway.
+
+  Tuned for small rendering: the plateau is proportionally longer and the
+  stroke thicker than in the store icon, so the flat green segment still reads
+  as "steady" at 40 px.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+
+  <defs>
+    <linearGradient id="kinetics" gradientUnits="userSpaceOnUse" x1="52" y1="0" x2="452" y2="0">
+      <stop offset="0.00" stop-color="#FF3B30"/>
+      <stop offset="0.14" stop-color="#FF6A1F"/>
+      <stop offset="0.24" stop-color="#FF8A00"/>
+      <stop offset="0.33" stop-color="#FFD600"/>
+      <stop offset="0.42" stop-color="#00C853"/>
+      <stop offset="0.86" stop-color="#00C853"/>
+      <stop offset="0.96" stop-color="#00AAFF"/>
+      <stop offset="1.00" stop-color="#00AAFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="500" height="500" rx="112" fill="#0E1218"/>
+
+  <path d="M 52 130
+           C 88 144, 114 250, 166 320
+           C 188 352, 206 360, 234 360
+           L 396 360
+           C 420 360, 434 344, 452 310"
+        fill="none"
+        stroke="url(#kinetics)"
+        stroke-width="52"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

@@ -58,8 +58,11 @@ MSG_FIELD_DESCRIPTION = 206
 
 # record message fields we care about
 REC_TIMESTAMP = 253
+REC_SPEED = 6             # m/s, scale 1000
+REC_POWER = 7             # watts
 REC_THB = 54
 REC_SMO2 = 57
+REC_ENHANCED_SPEED = 73   # m/s, scale 1000, preferred when present
 
 LAP_TIMESTAMP = 253       # nominally the lap end time
 LAP_START_TIME = 2
@@ -286,6 +289,15 @@ def _read_data(buf: bytes, pos: int, mdef: MessageDef, data: FitData,
         thb = values.get(REC_THB)
         if isinstance(thb, (int, float)):
             rec["thb"] = thb / 100.0
+        # Enhanced speed has the wider range; fall back to the legacy field.
+        speed = values.get(REC_ENHANCED_SPEED)
+        if not isinstance(speed, (int, float)):
+            speed = values.get(REC_SPEED)
+        if isinstance(speed, (int, float)):
+            rec["speed"] = speed / 1000.0
+        power = values.get(REC_POWER)
+        if isinstance(power, (int, float)):
+            rec["power"] = float(power)
         for key, v in dev_values.items():
             meta = dev_meta.get(key)
             if meta is None or not isinstance(v, (int, float)):
