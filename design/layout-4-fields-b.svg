@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="454" height="454" viewBox="0 0 454 454">
+<defs><clipPath id="glass"><circle cx="227.0" cy="227.0" r="227.0"/></clipPath></defs>
+<rect width="454" height="454" fill="#000"/>
+<g clip-path="url(#glass)">
+<circle cx="95.4" cy="130.9" r="21.0" fill="#00AAFF"/>
+<polyline points="86.2,136.3 95.4,125.4 104.6,136.3" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="126.8" y="146.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
+<text x="145" y="185" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<rect x="0" y="0" width="225" height="225" fill="none" stroke="#333" stroke-width="1"/>
+<circle cx="258.9" cy="130.9" r="21.0" fill="#00AAFF"/>
+<polyline points="249.7,136.3 258.9,125.4 268.1,136.3" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="290.3" y="146.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
+<text x="308" y="185" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<rect x="228" y="0" width="225" height="225" fill="none" stroke="#333" stroke-width="1"/>
+<circle cx="95.4" cy="289.4" r="21.0" fill="#00AAFF"/>
+<polyline points="86.2,294.8 95.4,283.9 104.6,294.8" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="126.8" y="304.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
+<text x="145" y="344" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<rect x="0" y="228" width="225" height="226" fill="none" stroke="#333" stroke-width="1"/>
+<circle cx="258.9" cy="289.4" r="21.0" fill="#00AAFF"/>
+<polyline points="249.7,294.8 258.9,283.9 268.1,294.8" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="290.3" y="304.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
+<text x="308" y="344" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<rect x="228" y="228" width="225" height="226" fill="none" stroke="#333" stroke-width="1"/>
+</g>
+<circle cx="227.0" cy="227.0" r="226.5" fill="none" stroke="#2A2F37" stroke-width="1"/>
+</svg>
