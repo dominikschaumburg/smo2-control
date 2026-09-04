@@ -30,7 +30,7 @@ AN ECHTEN DATEN KALIBRIERT
 Die Schwellen sind nicht geraten, sondern an fünf echten Schwellen-Einheiten
 gemessen: Innerhalb eines Plateaus bleibt die Steigung über ein
 60-Sekunden-Fenster innerhalb von ±0,06 %/s, während der On-Transient
-−0,23 %/s unterschreitet. Auch die Fensterlänge ist so bestimmt.
+−0,23 %/s unterschreitet.
 
 ADAPTIVE ANZEIGE
 
@@ -53,14 +53,14 @@ auf die Session-Range statt auf 0–100 %.
 
 ENTKOPPLUNGSERKENNUNG
 
-Bleibt deine Pace oder Power über 30 Sekunden konstant, während die Sättigung
-weiter absinkt, meldet das Feld DECOUPLING. Das ist beginnende Ermüdung oder
+Bleibt Pace oder Power über 30 Sekunden konstant, während die Sättigung weiter
+absinkt, meldet das Feld DECOUPLING. Das ist beginnende Ermüdung oder
 Effizienzverlust – in keinem der beiden Signale allein sichtbar.
 
 AUFZEICHNUNG FÜR DIE NACHANALYSE
 
 Pro Sekunde ins FIT: geglättete SmO2, Steigung in %/s, SmO2 Control Index,
-Zustand und Gesamthämoglobin, alles in Garmin Connect als Diagramm.
+Zustand und Gesamthämoglobin – in Garmin Connect als Diagramm.
 Pro Runde: Desaturationsrate (Ende minus Start durch Lap-Dauer), steilste
 On-Kinetik-Steigung, Minimum und Maximum. Deine Intervallanalyse entsteht
 automatisch.
@@ -88,6 +88,6 @@ Werkzeug, das dieselbe Berechnung offline auf .fit-Dateien anwendet.
 
 VORAUSSETZUNGEN
 
-Ein Moxy oder ein anderer Sensor mit ANT+ Muscle Oxygen Profil, sowie eine
-Garmin-Uhr mit ANT+-Funk: Forerunner 245 bis 970, Fenix 6 bis 8, Epix Gen 2,
-Enduro, MARQ Gen 2 und Edge 530 bis 1050.
+Ein Moxy oder ein anderer Sensor mit ANT+ Muscle Oxygen Profil sowie eine
+Garmin-Uhr mit ANT+-Funk: Forerunner 245–970, Fenix 6–8, Epix Gen 2, Enduro,
+MARQ Gen 2 und Edge 530–1050.
