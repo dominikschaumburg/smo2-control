@@ -72,10 +72,15 @@ class SessionCalibration {
 
     //! Feed one smoothed SmO2 value. Raw values are never passed in here — a
     //! sensor spike must not be able to define the session range.
-    public function update(level as Float) as Void {
+    //! @param timerRunning false while the activity is paused; the session
+    //!        average must not absorb ten minutes of standing around, but the
+    //!        baseline and range still track (that is what warm-up is for).
+    public function update(level as Float, timerRunning as Boolean) as Void {
         _elapsed++;
-        _sum += level;
-        _n++;
+        if (timerRunning) {
+            _sum += level;
+            _n++;
+        }
 
         collectBaseline(level);
         updateExtremes(level);

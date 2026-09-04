@@ -208,7 +208,7 @@ class SmO2ControlView extends WatchUi.DataField {
             _kinetics.update(raw as Float);
             var level = _kinetics.getLevel();
             if (level != null) {
-                _calib.update(level as Float);
+                _calib.update(level as Float, _timerRunning);
                 _dispValue = level;
                 _dispTrend = _kinetics.getSlowSlope();
                 _dispState = _kinetics.getState();
