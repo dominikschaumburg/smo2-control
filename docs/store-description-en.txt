@@ -1,92 +1,93 @@
-SmO2 Control – Steady-State Intensity Monitor
+SmO2 Control: Steady-State Intensity Monitor
 
-A data field for the Moxy muscle oxygen sensor that answers one question in real
-time: am I in steady state, or is my saturation still drifting down?
+A data field for the Moxy muscle oxygen sensor that answers one question in
+real time: am I in steady state, or is my saturation still drifting down?
 
-THE PROBLEM WITH ABSOLUTE VALUES
+The problem with absolute values
 
 "SmO2 = 34 %" does not help you. The absolute number depends on sensor site,
-adipose tissue thickness, strap pressure and day form, and is barely comparable
-between sessions. What is informative is the kinetics: how fast saturation falls
-at interval onset, whether it reaches a plateau, and how quickly it recovers.
+adipose thickness, strap pressure and day form. What is informative is the
+kinetics: how fast saturation falls at interval onset, whether it plateaus, and
+how quickly it recovers.
 
-FIVE STATES, FIVE COLOURS
+Five states, five colours
 
-ON-KIN (orange) – Rapid desaturation, the on-transient at interval start
-OVER (red) – The decline continues, you are past the sustainable point
-CONTROL (yellow) – Slow decline, demanding but controlled
-STEADY (green) – Flat, supply matches demand, sustainable
-REOXY (blue) – Rising, recovery or the effort is too easy
+ONSET (orange): rapid desaturation, the on-transient at interval start
+ZONE 3 (red): the decline continues, no steady state exists here
+ZONE 2+ (yellow): slow decline, at the upper boundary
+ZONE 2 (green): flat, supply matches demand, a sustainable steady state
+ZONE 1 (blue): rising, recovery or the effort is too easy
 
-The decisive distinction is ON-KIN versus OVER. Every hard interval begins with
-a steep fall, and that fall is not yet a verdict. What separates a sustainable
-interval from an overcooked one is whether the plateau arrives afterwards. So
-the transient gets its own state, instead of painting every hard interval red
-for its first minute.
+Named for the three-zone model, mapped by behaviour rather than by absolute
+intensity; the kinetic names (ON-KIN / OVER / CONTROL / STEADY / REOXY) are one
+setting away.
 
-CALIBRATED AGAINST REAL DATA
+The decisive distinction is ONSET versus ZONE 3. Every hard interval begins
+with a steep fall, and that fall is not yet a verdict; what separates a
+sustainable interval from an overcooked one is whether the plateau arrives
+afterwards. So the transient gets its own state, instead of painting every hard
+interval red for a minute.
 
-The thresholds are not guesses. They are measured across five real threshold
-sessions: inside a plateau the slope over a 60-second window stays within
-±0.06 %/s, while the on-transient runs past −0.23 %/s. The window length was
-determined the same way.
+Calibrated against real data
 
-ADAPTIVE DISPLAY
+The thresholds are measured, not guessed: across five real threshold sessions
+the slope inside a plateau stays within ±0.06 %/s over a 60-second window,
+while the on-transient runs past −0.23 %/s.
 
-The field adapts to its size, in three tiers:
+Adaptive display
 
-Full screen – sparkline with segments coloured by state, lap markers,
-calibration bands and a forecast marker, plus value, state, slope, SmO2 Control
-Index and pace or power.
-Half screen – value with trend arrow plus a mini sparkline.
-Small field – state as the background colour, with value and trend arrow.
+Full and half screen. The chart is the subject: state-coloured segments with
+the area beneath filled, axes labelled MIN and MAX, lap markers, a forecast
+triangle. Value and state light above, rate and pace or power below.
 
-A colour-blind palette is available.
+Every smaller field gets a traffic light and one number, centred as a group. The
+number is configurable (SmO2, rate of change, THb, control index), with the
+rate of change on a second line where there is room.
 
-SESSION-INTERNAL CALIBRATION
+The rate reads in %/s or %/min, and MIN and MAX cover the whole session or the
+current lap. The light also carries a symbol, so the verdict never rests on hue
+alone, and a colour-blind palette is available.
+
+Session-internal calibration
 
 Baseline median over the first minute, rolling session min/max with slow
-relaxation to resist outliers, first lap as a reference interval, and a double
-lap press as a reset after re-seating the sensor. The y axis scales
-automatically to the session range rather than 0–100 %, because in practice a
-Moxy lives between roughly 20 and 80 %.
+relaxation against outliers, first lap as a reference interval, and a double
+lap press to reset after re-seating the sensor.
 
-DECOUPLING DETECTION
+Decoupling detection
 
-If your pace or power holds steady for 30 seconds while saturation keeps
-falling, the field flags DECOUPLING. That is the onset of fatigue or efficiency
-loss — and it is invisible in either signal on its own.
+If pace or power holds steady for 30 seconds while saturation keeps falling,
+the field flags DECOUPLING: the onset of fatigue or efficiency loss, invisible
+in either signal on its own.
 
-RECORDING FOR POST-ANALYSIS
+Recording for post-analysis
 
-Every second to the FIT file: smoothed SmO2, slope in %/s, SmO2 Control Index,
-state and total haemoglobin, all charted in Garmin Connect.
-Every lap: desaturation rate (end minus start over lap duration), steepest
-on-kinetics slope, minimum and maximum. Your interval analysis comes for free.
+Every second to the FIT file: smoothed SmO2, slope, SmO2 Control Index, state,
+total haemoglobin. Every lap: desaturation rate, steepest on-kinetics slope,
+minimum, maximum. All charted in Garmin Connect.
 
-IMPORTANT BEFORE FIRST USE
+Important before first use
 
 The Moxy must not also be paired natively in your watch's sensor list. Muscle
-oxygenation was never part of the native Connect IQ sensor API, so this data
-field opens its own ANT channel. A sensor can hold only one channel — whichever
-side claims it first blocks the other. Unpair the Moxy in your watch settings
-and the field will find it by itself.
+oxygenation was never part of the native Connect IQ sensor API, so this field
+opens its own ANT channel, and a sensor holds only one; whichever side claims
+it first blocks the other. Unpair the Moxy and the field finds it itself.
 
 Invalid readings and ambient-light warnings are treated as "no data", never as
-0 %. When the sensor drops out, trend computation freezes rather than inventing
-a slope, and the channel reconnects on its own.
+0 %. On a dropout the trend freezes rather than inventing a slope, and the
+channel reconnects on its own.
 
-CONFIGURABLE
+Configurable
 
-Sensor ID, smoothing, forecast horizon, steady-state window, both state
-thresholds, chart window, y-axis mode, baseline duration, colour-blind mode,
-pace display and FIT recording.
+Sensor ID, smoothing, forecast horizon, steady-state window, both thresholds,
+chart window, y axis, baseline duration, state naming, symbols, small-field
+metric and second line, rate unit, colour-blind mode, pace, FIT recording.
 
-To tune against your own intervals, the project repository includes a tool that
-runs the same computation offline on .fit files.
+To tune against your own intervals, the repository includes a tool that runs
+the same computation offline on your .fit files.
 
-REQUIREMENTS
+Requirements
 
-A Moxy, or another sensor using the ANT+ Muscle Oxygen profile, plus a Garmin
-watch with an ANT+ radio: Forerunner 245 to 970, Fenix 6 to 8, Epix Gen 2,
-Enduro, MARQ Gen 2 and Edge 530 to 1050.
+A Moxy or other ANT+ Muscle Oxygen sensor, plus a Garmin watch with ANT+:
+Forerunner 245 to 970, Fenix 6 to 8, Epix Gen 2, Enduro, MARQ Gen 2 and
+Edge 530 to 1050.

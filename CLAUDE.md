@@ -43,6 +43,24 @@ needs SimulANT+ with an ANT USB stick.
 
 `tools/kinetics_replay.py` is a Python port of the same model. Keep it in sync.
 
+**3. A green build also says nothing about the layout.** After touching
+`SmO2ControlView.mc`, `ChartRenderer.mc` or `Palette.mc`:
+
+```bash
+./tools/layout_audit.py     # every device x every layout x every cell
+```
+
+It runs the real layout maths over all 5716 data field rectangles the SDK
+defines and fails on anything off the usable rectangle, off the glass, or
+overlapping another element. It found two live bugs the first time it ran: the
+axis gutter was measured without the space in "MAX 88", and the header row was
+sized off the value font alone so the state label fell off the top wherever the
+value font degraded below the label font.
+
+The element rectangles come from `design/render_field.py`, the port of the
+drawing code — so the audit only checks the watch as far as the port is
+faithful. Change one, change the other.
+
 **The synthetic invariant:** sustainable intervals (`work1`, `work2`) reach
 `STEADY` ~55 % of their time; unsustainable ones (`work3`, `work4`) ~4 %.
 

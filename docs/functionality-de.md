@@ -1,4 +1,4 @@
-# SmO2 Control — Vollständige Funktionsbeschreibung
+# SmO2 Control: vollständige Funktionsbeschreibung
 
 Garmin Connect IQ Datenfeld für Muskeloxygenierung (SmO₂) mit einem Moxy-Sensor.
 
@@ -12,20 +12,20 @@ Anpressdruck der Halterung, Hautdurchblutung, Temperatur und Tagesform. Ein
 Datenfeld, das „SmO₂ = 34 %" anzeigt, gibt dem Athleten deshalb keine
 handlungsfähige Information.
 
-Innerhalb einer Einheit ist das Signal dagegen sehr aussagekräftig — nicht als
+Innerhalb einer Einheit ist das Signal dagegen sehr aussagekräftig, allerdings nicht als
 Absolutwert, sondern als **Kinetik**:
 
 1. **Rapide Desaturierung** zu Intervallbeginn: Verbrauch übersteigt Angebot.
    Die Steilheit dieses Abfalls korreliert mit der metabolischen Rate.
 2. **Plateau oder fortgesetzter Drift**: Erreicht SmO₂ ein stabiles Plateau,
-   balancieren sich Angebot und Verbrauch — die Intensität ist nachhaltig.
-   Driftet der Wert weiter nach unten, kann das Angebot nicht mehr folgen — die
+   balancieren sich Angebot und Verbrauch, die Intensität ist nachhaltig.
+   Driftet der Wert weiter nach unten, kann das Angebot nicht mehr folgen, die
    Intensität liegt über dem nachhaltigen Punkt.
 3. **Reoxygenierung** in der Pause, oft mit Overshoot über den Ausgangswert.
 
 Die Nachricht des Datenfelds an den Athleten in Echtzeit lautet deshalb nicht
 „34 %", sondern: *fällt gerade / stabilisiert sich / driftet weiter / erholt
-sich* — und wie schnell.
+sich*, und wie schnell.
 
 ---
 
@@ -33,13 +33,33 @@ sich* — und wie schnell.
 
 Fünf Zustände, jeder mit eigener Farbe:
 
-| Zustand | Farbe | Bedeutung |
-|---|---|---|
-| **ON-KIN** | Orange | Rapide Desaturierung — der On-Transient zu Intervallbeginn |
-| **OVER** | Rot | Abfall setzt sich fort — über dem nachhaltigen Punkt |
-| **CONTROL** | Gelb | Langsamer Abfall — fordernd, aber kontrolliert |
-| **STEADY** | Grün | Flach — Angebot deckt Verbrauch, nachhaltig |
-| **REOXY** | Blau | Steigend — Erholung oder zu geringe Intensität |
+| Zustand | Farbe | Bedeutung | Kinetischer Name |
+|---|---|---|---|
+| **ONSET** | Orange | Rapide Desaturierung, der On-Transient zu Intervallbeginn | ON-KIN |
+| **ZONE 3** | Rot | Abfall setzt sich fort, hier existiert kein Steady State | OVER |
+| **ZONE 2+** | Gelb | Langsamer Abfall, an der Obergrenze der schweren Domäne | CONTROL |
+| **ZONE 2** | Grün | Flach, Angebot deckt Verbrauch, nachhaltiger Steady State | STEADY |
+| **ZONE 1** | Blau | Steigend, Erholung oder zu geringe Intensität | REOXY |
+
+Die Zonen-Benennung ist der Standard, weil eine Sportlerin ohnehin im
+Drei-Zonen-Modell (moderat / schwer / schwerst) denkt und ein Label, das sich
+darauf abbilden lässt, schneller in Handlung übersetzt wird als eines, das die
+Messgröße benennt. Die Zuordnung erfolgt über das **Verhalten**, nicht über die
+absolute Intensität:
+
+- SmO₂ erholt sich unter Last → Angebot übersteigt Verbrauch → Zone 1
+- SmO₂ hält ein Plateau → nachhaltiger Steady State → Zone 2
+- SmO₂ driftet langsam nach unten → an der Obergrenze → Zone 2+
+- SmO₂ fällt weiter → es existiert kein Steady State → Zone 3
+
+Die ehrliche Einschränkung: Zone 1 und Zone 2 zeigen beide ein Plateau, das
+Feld kann also aus der Kinetik allein keinen lockeren von einem
+Schwellenlauf unterscheiden. Es kann sagen, ob sich die aktuelle Belastung
+eingependelt hat, und genau das ist die gestellte Frage. ONSET ist der
+On-Transient und gehört zu keiner Zone.
+
+Die kinetischen Namen in der rechten Spalte gibt es weiterhin: dafür
+*Zustände als Trainingszonen benennen* abschalten.
 
 Die wichtigste Unterscheidung ist **ON-KIN gegen OVER**. Jedes harte Intervall
 beginnt mit einem steilen Abfall; dieser Abfall ist noch kein Urteil. Was ein
@@ -50,6 +70,32 @@ wertlos.
 
 Alle Zustandsgrenzen besitzen eine Hysterese von ±15 %, damit die Farbe an einer
 Schwelle nicht flackert.
+
+### Wohin eine Farbe zeitlich gehört
+
+Das Live-Urteil und die Diagrammfarben entstehen bewusst unterschiedlich.
+
+Eine nachlaufende Regression über [t−60, t] schätzt die Steigung in der **Mitte**
+dieses Fensters, bei t−30, nicht an seinem Ende. Sie bei t zu zeichnen setzt die
+Farbe dreißig Sekunden rechts neben die Form, die sie beschreibt: an einem
+echten Intervall gemessen war der Verlauf noch grün, während er mit −0,785 %/s
+fiel, und noch orange, als das Plateau längst da war.
+
+Das Diagramm färbt jedes Segment deshalb aus einem **zentrierten** Fenster um
+diesen Punkt, das am Live-Rand symmetrisch schrumpft, das übliche Verfahren
+für Randeffekte. An einem echten Intervall überprüft: jede Segmentfarbe passt
+jetzt zur Richtung, in die die Linie tatsächlich läuft, ausnahmslos.
+
+Zwei Konsequenzen sind wissenswert. Die jüngsten Samples werden aus weniger
+Evidenz beurteilt, ein Segment kann also die Farbe wechseln, wenn mehr
+hinzukommt. Das ist ehrlich, denn genau dann kommt die Evidenz. Und die allerjüngsten,
+für die noch kein brauchbares Fenster existiert, werden grau gezeichnet statt
+geraten.
+
+Die Diagrammfarben verzichten außerdem auf die Hysterese des Live-Urteils. Die
+Hysterese soll das Flackern des *aktuellen* Zustands verhindern; auf eine
+fertige Form angewandt würde sie die Farbe eines Segments davon abhängig machen,
+was ihm vorausging, statt davon, was es ist.
 
 ---
 
@@ -86,7 +132,7 @@ Levels. Kostet einen Durchlauf von ~60 Multiply-Adds pro Sekunde.
 
 **Warum nicht auch hier exponentielle Glättung?** Nicht wegen Rechenlast. Auf
 echten Moxy-Daten überschreitet der schnelle Holt-Trend bei der Hälfte aller
-Samples 0,15 %/s — und zwar *innerhalb eines bombenfesten Plateaus*. Das Signal
+Samples 0,15 %/s, und zwar *innerhalb eines bombenfesten Plateaus*. Das Signal
 bewegt sich real so schnell; das ist kein Glättungsartefakt, und keine Schwelle
 auf diesem Trend kann etwas trennen. Ihn zu verlangsamen hilft ebenfalls nicht:
 ein exponentieller Filter hat einen unendlichen Schwanz und trägt den
@@ -96,17 +142,17 @@ Für die Frage „ist das Plateau da?" ist Vergessen genau das gewünschte Verha
 
 **Warum 60 Sekunden?** Gemessen an fünf echten Schwellen-Einheiten:
 
-- bei 45 s ist das Plateau-Band ±0,08 %/s — echter Drift verschwindet darin
+- bei 45 s ist das Plateau-Band ±0,08 %/s, echter Drift verschwindet darin
 - bei 90 s verdünnt sich der On-Transient in die vorausgegangene Erholung und
   wird gar nicht mehr erkannt
-- bei 60 s liegt die Plateau-Steigung innerhalb von ±0,06 %/s (10.–90.
+- bei 60 s liegt die Plateau-Steigung innerhalb von ±0,06 %/s (10. bis 90.
   Perzentil), während der Transient −0,23 %/s unterschreitet
 
 ### 3.3 Schwellen
 
 | Schwelle | Default | Herkunft |
 |---|---|---|
-| θ_stable | 0,06 %/s | 10.–90. Perzentil der Plateau-Steigung, fünf Sessions |
+| θ_stable | 0,06 %/s | 10. bis 90. Perzentil der Plateau-Steigung, fünf Sessions |
 | θ_drift | 0,15 %/s | Grenze des normalen Plateau-Verhaltens |
 | θ_onkin | 2 × θ_drift | zwischen Plateau-Extrem und Transient-Steilheit |
 
@@ -119,7 +165,7 @@ Sobald die Regressionssteigung unter θ_onkin fällt, gilt der Zustand als
 On-Transient. Endet der Abfall, wird das Regressionsfenster **neu gestartet**,
 damit die Plateau-Frage ausschließlich aus Post-Transient-Daten beantwortet
 wird. Bis das Fenster wieder gefüllt ist (ein Drittel der Fensterlänge, also
-20 s), meldet das Feld weiterhin ON-KIN — das ist die ehrliche Antwort
+20 s), meldet das Feld weiterhin ON-KIN. Das ist die ehrliche Antwort
 „noch nicht entschieden".
 
 Ein Lap-Druck gilt ebenfalls als Lastwechsel und startet das Fenster neu.
@@ -134,22 +180,22 @@ ins FIT geschrieben, weil sie mit der metabolischen Rate korreliert.
 Da Absolutwerte zwischen Einheiten nicht vergleichbar sind, wird alles auf ein
 innerhalb der Einheit dynamisch kalibriertes Fenster bezogen.
 
-**Stufe 1 — Baseline.** Median der ersten 60 Sekunden gültiger Daten (Fenster
+**Stufe 1, Baseline.** Median der ersten 60 Sekunden gültiger Daten (Fenster
 einstellbar). Dient als Referenz-Oben. Bei langen Fenstern wird unterabgetastet,
 maximal 120 Samples werden gehalten.
 
-**Stufe 2 — Rollendes Session-Min/Max.** Wird ausschließlich aus *geglätteten*
+**Stufe 2, rollendes Session-Min/Max.** Wird ausschließlich aus *geglätteten*
 Werten fortgeschrieben, damit ein einzelner Sensor-Spike die Range nicht
 definieren kann. Beide Extreme relaxieren mit 0,02 %/s zurück zum aktuellen
-Wert, sobald sie mehr als 3 % davon entfernt sind — so verzerrt ein einmaliger
+Wert, sobald sie mehr als 3 % davon entfernt sind, so verzerrt ein einmaliger
 Ausreißer die Skalierung nicht für den Rest der Einheit.
 
-**Stufe 3 — Lap-Kalibrierung.** Der erste Lap wird als Referenzintervall
+**Stufe 3, Lap-Kalibrierung.** Der erste Lap wird als Referenzintervall
 behandelt; sein Start- und Endwert verankern das Arbeitsband. Ein zweiter
-Lap-Druck innerhalb von 2 Sekunden setzt die Session-Range zurück — gedacht für
+Lap-Druck innerhalb von 2 Sekunden setzt die Session-Range zurück, gedacht für
 den Fall, dass der Sensor während der Einheit umgesetzt wird.
 
-**Stufe 4 — Relative Schwellen.** θ_stable und θ_drift sind in %/s definiert,
+**Stufe 4, relative Schwellen.** θ_stable und θ_drift sind in %/s definiert,
 nicht als absolute SmO₂-Prozente. Raten sind zwischen Einheiten deutlich
 stabiler als Absolutwerte.
 
@@ -165,48 +211,130 @@ Drei Layout-Stufen, einmalig in `onLayout()` aus der gerenderten Fläche gewähl
 Die Entscheidung fällt nicht pro Frame, weil sich die Größe zur Laufzeit nicht
 ändert.
 
-### Full (ab 200 × 150 px)
+### Full: das ganzseitige und das halbseitige Datenfeld
 
-- Großer SmO₂-Wert links, in der Zustandsfarbe
-- Rechts dreizeilig: Zustandslabel, Steigung in %/s, SCI
-- **Sparkline** über das Diagrammfenster (Default 90 s), jedes Liniensegment in
-  der Farbe des Zustands an diesem Punkt
+Das Diagramm erscheint **nur** im ganzseitigen und im halbseitigen Datenfeld.
+Dafür müssen zwei Bedingungen gelten, und beide werden gebraucht:
+
+- das nutzbare Rechteck misst mindestens 180 × 110 px, das kleinste, das ein
+  ganzseitiges Feld auf irgendeinem unterstützten Gerät bekommt (fenix 7S, mit
+  184 × 150), damit das Diagramm im Layout, für das es gedacht ist, nie
+  verschwindet
+- das Feld belegt mindestens 45 % der Bildschirmhöhe und 90 % der Breite
+
+Die Größe allein ist der falsche Test. Der Mittelstreifen eines
+Drei-Feld-Layouts misst auf einer FR970 454 × 158 px, breiter als der
+Vollbildschirm einer fenix 7S, aber dort sucht niemand nach einem Verlauf.
+45 % der Höhe lässt eine Hälfte durch und schließt ein Drittel aus.
+
+Das Diagramm ist der Hauptgegenstand dieser Stufe. Es bekommt alles außer einer
+Kopf- und einer Fußzeile, und die Wertschrift ist auf ein Drittel der Höhe
+gedeckelt, damit sie es nicht verdrängen kann.
+
+- **Kopfzeile**: SmO₂-Wert in der Zustandsfarbe, gegenüber eine **farbige
+  Zustandsampel** und ihr Label, dieselbe Scheibe, die die diagrammlosen
+  Stufen zeigen, damit über alle Feldgrößen hinweg eine visuelle Sprache gilt
+- **Diagramm**: der Verlauf über das Diagrammfenster (Default 90 s), jedes
+  Segment in der Farbe seines Zustands, und die **Fläche darunter gefüllt** in
+  einer abgedunkelten Variante derselben Farbe. Eine dünne Linie muss man
+  suchen, eine gefüllte Fläche sieht man einfach.
+- **Achsen**: Gitterlinien oben, in der Mitte und unten, die Grenzwerte links
+  ausdrücklich mit **MAX** und **MIN** beschriftet. Welches Ende welches ist,
+  ist offensichtlich, wenn man das Diagramm betrachtet, und überhaupt nicht
+  offensichtlich, wenn man mitten im Intervall hinschaut. Die Wörter stehen
+  über ihren Zahlen, wo die Höhe dafür reicht, und daneben, wo nicht.
 - **Lap-Marker** als vertikale Linien
-- **Kalibrierungsbänder**: dünne horizontale Linien bei Session-Min und -Max
-- **Prognose-Marker**: ausgegraute Linie plus Punkt am rechten Rand
-- Untere Zeile: Pace bzw. Power, rechts die Session-Range
+- **Prognose-Marker**: ein **Dreieck am rechten Rand**, auf der Höhe, auf die
+  der Wert zuläuft, und in die Richtung zeigend, in die er läuft, in der
+  Zustandsfarbe. Es ersetzt einen grauen Punkt, der „hier ist etwas" sagte,
+  ohne zu sagen was, und eher wie ein verirrter Messwert wirkte als wie eine
+  Prognose.
+- **Fußzeile**: die Rate in %/s in der Zustandsfarbe, gegenüber die externe Last
 
-### Medium (ab 120 × 70 px)
+SCI wird nicht angezeigt. Die Kennzahl ist einheitenlos und in Bewegung schwer
+zu lesen, und die Rate sagt dasselbe in handlungsfähigen Einheiten. Ins FIT
+wird sie weiterhin geschrieben.
 
-Wert links in der Zustandsfarbe, Trendpfeil darunter, Mini-Sparkline rechts.
+### Medium (ab 120 × 70 px) und Compact (alles darunter)
 
-### Compact (alles darunter)
+Eine **Ampel** und eine Zahl, als eine Gruppe mittig in der Zelle: erst das
+Licht, dann die Zahl. Die Leserichtung läuft von links nach rechts, also soll
+das Urteil vor dem Wert stehen, den es einordnet. Die Scheibe ist genau so hoch
+wie die Ziffern. Alles andere liest sich als zwei Elemente in zwei Größen statt
+als eine Einheit.
 
-Kein Diagramm. Der Zustand wird vollständig von der **Hintergrundfarbe**
-getragen, davor der Wert in Schwarz und ein Trendpfeil — lesbar auf einen Blick
-aus einem Vier-Feld-Layout.
+Eine farbige Scheibe wird präattentiv erkannt, ein Wort nicht. Eine erloschene
+Ampel wird als grauer Ring gezeichnet und nicht als gar nichts, damit ein
+Sensorabriss nicht wie ein Layoutfehler aussieht.
+
+Die Zahl ist einstellbar: **SmO₂**, die **Änderungsrate**, **THb** oder der
+**Control-Index**. Die Farbe ändert dabei nie ihre Bedeutung.
+
+Wo die Höhe reicht, ergänzt die Medium-Stufe eine **zweite Zeile**, im Standard
+die **Änderungsrate**. Das ist die aussagekräftigere Zahl: Die
+Zustandsklassifikation wird aus der Rate berechnet, sie bewegt sich also, bevor
+sich die Farbe bewegt. Alternativ lässt sich dort der Name der Metrik anzeigen
+oder die Zeile abschalten. Ist die Hauptzahl bereits die Rate, fällt die zweite
+Zeile auf den Namen zurück, statt dasselbe zweimal zu sagen.
 
 ### Angezeigte Steigung
 
 Angezeigt wird die Regressionssteigung, nicht der schnelle Holt-Trend. Eine
 Zahl, die der Farbe widerspricht, würde nur verwirren.
 
-### Farben
+Die Einheit lässt sich zwischen **%/s** und **%/min** umschalten. %/s ist die
+natürliche Einheit der Regression, aber am Plateau steht dort −0,01 und jede
+interessante Stelle liegt hinter dem Komma; %/min hebt die Zahlen in einen
+Bereich, den man auf einen Blick vergleichen kann.
+
+### Farben und Symbole
 
 Standard ist die intuitive Ampel-Zuordnung. Die Farbenblind-Variante ersetzt die
 Rot-Grün-Achse durch eine Blau-Magenta-Achse (Cyan / Weiß / Violett / Bernstein
 / Magenta), die unter Deuteranopie und Protanopie unterscheidbar bleibt.
 
+Ein Palettenwechsel ist allerdings immer noch nur ein Kanal, und etwa jeder
+zwölfte Mann kann genau den nicht lesen, auf den sich dieses Feld am stärksten
+stützt. Deshalb trägt die Zustandsampel zusätzlich ein **Symbol**, und die fünf
+bilden eine Familie: wie viele Chevrons, und in welche Richtung.
+
+| Zustand | Symbol |
+|---|---|
+| ZONE 1 | ein Chevron nach oben |
+| ZONE 2 | ein waagerechter Balken |
+| ZONE 2+ | ein Chevron nach unten |
+| ZONE 3 | zwei Chevrons nach unten, übereinander |
+| ONSET | ein Balken, darunter ein abfallendes Chevron |
+
+Es sind Striche und keine gefüllten Symbole, denn ein Strich behält seine
+Identität bei zwölf Pixeln Breite, wo ein gefülltes Symbol zum Klecks wird. Sie
+werden in der Hintergrundfarbe aus der Scheibe ausgestanzt, damit jedes als
+Loch im Licht gelesen wird und nicht als zweites Objekt darauf. Connect IQ
+kennt keine runden Linienenden, also wird an jedem Eckpunkt der Polylinie eine
+Scheibe gezeichnet; daraus entstehen die runden Enden und Ecken. Die
+zweiteiligen Symbole werden etwas kleiner und dünner gezeichnet als die
+einteiligen, sonst läuft das obere Element durch den Rand des Kreises hinaus.
+
+Unter einem Radius von 7 px ist kein Platz für ein Symbol, dann trägt die
+Scheibe die Bedeutung allein.
+
+Dieselben Symbole funktionieren in gleißender Sonne, durch einen nassen
+Bildschirm und auf den Graustufen-MIP-Displays, auf denen die Palette ohnehin
+zusammenfällt. Deshalb sind sie standardmäßig an und nicht hinter der
+Farbenblind-Einstellung versteckt.
+
 ---
 
 ## 6. Pace-/Power-Kopplung und Entkopplungserkennung
 
-Ist die Anzeige aktiviert, zeigt das Feld die externe Last: Power in Watt, falls
-verfügbar, sonst Pace in min/km.
+Ist die Anzeige aktiviert, zeigt das Feld die externe Last, gewählt nach
+Sportart: **Power in Watt auf dem Rad, Pace überall sonst**. Laufen nach Watt
+ist Geschmackssache und die Laufleistung einer Uhr ist verrauscht, deshalb ist
+Pace der Default beim Laufen. Die Pace folgt den Einheiten der Uhr.
 
 Der informative Moment ist die **Entkopplung**. Über ein 30-Sekunden-Fenster
-wird der Variationskoeffizient der Last berechnet. Liegt er unter 4 % — die
-externe Last ist also konstant — und befindet sich SmO₂ gleichzeitig in CONTROL
+wird der Variationskoeffizient der Last berechnet. Liegt er unter 4 %, die
+externe Last ist also konstant, und befindet sich SmO₂ gleichzeitig in CONTROL
 oder OVER, erscheint der Hinweis `DECOUPLING`. Das bedeutet: bei gleichbleibender
 äußerer Last sinkt die Muskeloxygenierung weiter. Das ist beginnende Ermüdung
 beziehungsweise Effizienzverlust, und es ist in keinem der beiden Signale allein
@@ -241,7 +369,7 @@ Moxy, ein konkreter Wert verhindert Fremdkopplung im Studio oder Verein.
 
 **Gültigkeitsprüfung.** Die Profil-Codes für „ungültig" und „Umgebungslicht zu
 hell" werden auf den *rohen* Feldern geprüft, bevor skaliert wird, und ergeben
-`null` — niemals 0 %. Ein SmO₂-Wert von 0 % sieht physiologisch plausibel aus
+`null`, niemals 0 %. Ein SmO₂-Wert von 0 % sieht physiologisch plausibel aus
 und wäre damit eine besonders gefährliche Falschangabe. Das offizielle
 MoxyField-Beispiel des SDK macht das falsch.
 
@@ -258,21 +386,21 @@ ANT-Takt sauber vom Render-Takt entkoppelt.
 
 | Feld | Einheit |
 |---|---|
-| `smo2` — geglättete Muskeloxygenierung | % |
-| `smo2Trend` — Regressionssteigung | %/s |
-| `sci` — SmO₂ Control Index | — |
-| `smo2State` — Zustand als Zahl | — |
-| `thb` — Gesamthämoglobin | g/dl |
+| `smo2`, geglättete Muskeloxygenierung | % |
+| `smo2Trend`, Regressionssteigung | %/s |
+| `sci`, SmO₂ Control Index | keine |
+| `smo2State`, Zustand als Zahl | keine |
+| `thb`, Gesamthämoglobin | g/dl |
 
 **Lap-Felder** (in der Rundenübersicht):
 
 | Feld | Einheit |
 |---|---|
-| `lapDesatRate` — Desaturationsrate `(Ende − Start) / Lap-Dauer` | %/s |
-| `lapOnKinRate` — steilste Steigung des On-Transienten | %/s |
+| `lapDesatRate`, Desaturationsrate `(Ende − Start) / Lap-Dauer` | %/s |
+| `lapOnKinRate`, steilste Steigung des On-Transienten | %/s |
 | `lapSmo2Min`, `lapSmo2Max` | % |
 
-**Session-Feld:** `avgSmo2` — Durchschnitt über die Einheit. Der Durchschnitt
+**Session-Feld:** `avgSmo2`, Durchschnitt über die Einheit. Der Durchschnitt
 läuft nur bei laufendem Timer weiter; zehn Minuten Stehen mit angelegtem Sensor
 verfälschen ihn nicht.
 
@@ -293,20 +421,36 @@ Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
 | `thetaStable1000` | 60 | θ_stable × 1000, Grenze Plateau/Abfall |
 | `thetaDrift1000` | 150 | θ_drift × 1000, Grenze kontrolliert/überzogen |
 | `chartWindowSec` | 90 | Zeitfenster der Sparkline |
-| `yAxisMode` | Auto | Auto (Session-Range) / fest 20–80 % / fest 0–100 % |
+| `yAxisMode` | Auto | Auto (letzte Minuten) / Session-Range / fest 20 bis 80 % / fest 0 bis 100 % |
 | `baselineSec` | 60 | Länge der Baseline-Erfassung |
 | `colorBlind` | aus | Farbenblind-Palette |
-| `showPace` | an | Pace-/Power-Zeile samt Entkopplungshinweis |
+| `stateIcons` | an | Symbol in der Zustandsampel, damit das Urteil nicht allein an der Farbe hängt |
+| `zoneLabels` | an | Zustände als Trainingszonen benennen (ZONE 1/2/2+/3, ONSET) statt kinetisch (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
+| `smallMetric` | SmO₂ | Was die diagrammlosen Stufen neben der Ampel zeigen: SmO₂, Änderungsrate, THb oder Control-Index |
+| `smallSecond` | Rate | Zweite Zeile unter dieser Zahl: nichts, Name der Metrik oder Änderungsrate |
+| `rateUnit` | %/s | Einheit der angezeigten Rate: %/s oder %/min |
+| `rangeScope` | Einheit | Ob sich MIN/MAX und der Session-Modus der Y-Achse auf die gesamte Einheit oder die aktuelle Runde beziehen |
+| `showPace` | an | Pace-/Power-Zeile inklusive Entkopplungs-Flag |
 | `recordFit` | an | SmO₂-Felder ins FIT schreiben |
 
 Fließkomma-Einstellungen sind als Ganzzahlen gespeichert (× 100 bzw. × 1000),
 weil der Connect-IQ-Einstellungseditor auf nicht allen Geräten eine verlässliche
 Fließkommaeingabe bietet.
 
-Die Y-Achse skaliert im Auto-Modus auf die Session-Range plus Rand statt auf
-0–100 %, weil sich beim Moxy praktisch alles zwischen etwa 20 und 80 % abspielt.
-Die Hälfte der Pixel für nie auftretende Werte zu reservieren, verschenkt genau
-die Auflösung, auf die es ankommt.
+Die Y-Achse nutzt nie 0 bis 100 %: beim Moxy spielt sich praktisch alles zwischen
+etwa 20 und 80 % ab, und die Hälfte der Pixel für nie auftretende Werte zu
+reservieren verschenkt genau die Auflösung, auf die es ankommt.
+
+Der Default **Auto** skaliert auf das, was gerade zu sehen ist, mit einem
+**Boden von 25 Prozentpunkten** auf die sichtbare Spannweite. Dieser Boden ist
+die gesamte Absicherung. Ohne ihn würde ein totes Plateau so weit gezoomt, bis
+sein eigenes Rauschen das Diagramm füllt und nach wildem Auf und Ab aussieht,
+das genaue Gegenteil der Aussage, für die es das Feld gibt. Über fünf Einheiten
+gemessen umfasst ein 90-s-Fenster im Plateau typisch 4,8 Punkte und im
+On-Transienten 22,5, ein Boden von 25 hält ein Plateau also bei etwa einem
+Fünftel der Höhe, während eine echte Desaturierung das Bild füllt. Alternative
+ist **Session-Range**: eine Skala, die sich nie bewegt, um den Preis, dass der
+Verlauf oft nur einen kleinen Teil des Diagramms nutzt.
 
 ---
 
@@ -330,21 +474,21 @@ Zusätzlich: Zustandsverteilung, RMS-Residuum, komprimierte Zeitleiste und ein
 Rastersuchlauf über α und β (`--sweep`). Die Parameter bilden direkt auf die
 App-Einstellungen ab.
 
-**`tools/fitreader.py`** ist ein abhängigkeitsfreier FIT-Decoder — kein
+**`tools/fitreader.py`** ist ein abhängigkeitsfreier FIT-Decoder, kein
 `pip install` nötig. Er liest SmO₂ aus den nativen Record-Feldern und erkennt
 automatisch Developer-Felder anderer Aufzeichnungs-Apps, deren Feldname die
 Sensor-ID enthält. Lap-Enden werden aus `start_time + total_elapsed_time`
 abgeleitet, weil nicht jeder Writer `lap.timestamp` korrekt setzt.
 
-**Modus `--synthetic`** erzeugt eine Einheit mit bekannter Grundwahrheit — zwei
-nachhaltige und zwei nicht nachhaltige Intervalle — und dient als
+**Modus `--synthetic`** erzeugt eine Einheit mit bekannter Grundwahrheit: zwei
+nachhaltige und zwei nicht nachhaltige Intervalle, und dient als
 Regressionstest der Klassifikation.
 
 ---
 
 ## 11. Geräteunterstützung
 
-55 Produkte mit ANT+-Funk: Forerunner 245–970, Fenix 6 bis 8, Epix Gen 2,
+55 Produkte mit ANT+-Funk: Forerunner 245 bis 970, Fenix 6 bis 8, Epix Gen 2,
 Enduro, MARQ Gen 2 sowie Edge 530 bis 1050. Geräte ohne ANT+-Radio können
 prinzipbedingt nicht mit einem Moxy sprechen und sind bewusst ausgeschlossen.
 
@@ -357,12 +501,12 @@ Deutsch.
 
 **Der Simulator kann kein SmO₂ liefern.** Die FIT-Wiedergabe des Connect-IQ-
 Simulators speist keine generischen ANT-Kanäle. Im Simulator steht das Feld
-dauerhaft auf `SEARCH` — das ist korrektes Verhalten. Für Live-Daten wird
+dauerhaft auf `SEARCH`, und das ist korrektes Verhalten. Für Live-Daten wird
 SimulANT+ mit einem ANT-USB-Stick benötigt; für Arbeit am Modell das
 Replay-Werkzeug.
 
 **θ_drift ist schwächer belegt als θ_stable.** In den fünf zur Kalibrierung
-verwendeten Einheiten plateauen alle Arbeitsintervalle — sie wurden korrekt
+verwendeten Einheiten plateauen alle Arbeitsintervalle, denn sie wurden korrekt
 gefahren. Damit fehlt ein echtes „über der Schwelle"-Intervall, und die
 Drift-Grenze stammt weiterhin aus synthetischen Daten. Eine Einheit mit bewusst
 zu hartem Start würde diese Schwelle empirisch absichern.

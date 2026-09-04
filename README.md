@@ -11,15 +11,22 @@ whether it reaches a plateau, and how quickly it recovers.
 
 ## What it shows
 
+![The full-screen field on an FR970](design/field-fr970.png)
+
 | State | Colour | Meaning |
 |---|---|---|
-| **REOXY** | blue | Rising — recovery, or the effort is too easy |
-| **STEADY** | green | Flat — supply matches demand, this is sustainable |
-| **ON-KIN** | orange | Rapid desaturation — the on-transient at interval start |
-| **CONTROL** | yellow | Slow decline — demanding but controlled |
-| **OVER** | red | Decline continuing — past the sustainable point |
+| **ZONE 1** | blue | Rising — recovery, or the effort is too easy |
+| **ZONE 2** | green | Flat — supply matches demand, a sustainable steady state |
+| **ONSET** | orange | Rapid desaturation — the on-transient at interval start |
+| **ZONE 2+** | yellow | Slow decline — at the upper boundary |
+| **ZONE 3** | red | Decline continuing — no steady state exists here |
 
-The distinction that matters most is **ON-KIN vs OVER**. Every hard interval
+The states are named for the three-zone model because that is the vocabulary an
+athlete already acts in; the mapping is by *behaviour*, not absolute intensity,
+and the kinetic names (REOXY / STEADY / ON-KIN / CONTROL / OVER) are a setting
+away.
+
+The distinction that matters most is **ONSET vs ZONE 3**. Every hard interval
 starts with a steep fall; that fall is not a verdict. What separates a
 sustainable interval from an unsustainable one is whether the plateau arrives
 after it.
@@ -69,10 +76,30 @@ depends on sensor placement, adipose thickness, strap pressure and day form.
 
 Three tiers, chosen once from the rendered size:
 
-- **Full** (≥ 200 × 150 px) — coloured sparkline with lap markers and
-  calibration bands, value, state, SCI, pace/power with decoupling flag
-- **Medium** (≥ 120 × 70 px) — value plus mini sparkline
-- **Compact** — state as background colour, value, trend arrow
+- **Full** — the full-screen and half-screen field only. Filled, axed chart
+  with MIN/MAX labels, lap markers and a forecast triangle; value and state
+  light above, rate and pace/power below.
+- **Medium / Compact** — everything smaller: a **traffic light** and one
+  configurable number as a single centred group, with the rate of change on a
+  second line where there is room. A sparkline squeezed into a quarter of a
+  round watch is decoration, and it costs the space the number needs.
+
+![Small tiers in a four-up layout](design/layout-4-fields-b.png)
+
+The light carries a symbol as well as a colour, so the verdict never rests on
+hue alone: one chevron up, a bar, one chevron down, two chevrons down, and a
+bar with a chevron falling away from it.
+
+![The five state symbols at three sizes](design/state-icons.png)
+
+The tier is decided from the *usable* rectangle — on a round watch the corners
+of the device context are not on the glass — and from how much of the screen
+the field owns. Both are checked against every layout of every supported
+device:
+
+```bash
+./tools/layout_audit.py     # 5716 field rectangles, no element off-glass or overlapping
+```
 
 ## Build and run
 
@@ -152,6 +179,10 @@ source/
 tools/
   kinetics_replay.py       offline model replay and parameter tuning
   fitreader.py             dependency-free FIT decoder
+  layout_audit.py          geometry check across every device and layout
+design/
+  render_field.py          offline SVG render of the field from real .fit data
+  icon.svg, icon-mark.svg  store icon and launcher mark
 ```
 
 ## Status
