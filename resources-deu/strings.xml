@@ -44,7 +44,7 @@
     <string id="s_rangeScope">MIN / MAX beziehen sich auf</string>
     <string id="s_rangeScope_session">Gesamte Einheit</string>
     <string id="s_rangeScope_lap">Aktuelle Runde</string>
-    <string id="s_zoneLabels">Zustände als Trainingszonen benennen</string>
+    <string id="s_plainLabels">Klartext-Zustandsnamen</string>
     <string id="s_stateIcons">Symbol in der Zustandsampel</string>
     <string id="s_recordFit">SmO2-Felder ins FIT schreiben</string>
 </resources>

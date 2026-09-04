@@ -212,7 +212,7 @@ class ChartRenderer {
     }
 
     //! Draw the chart into the given rectangle, with axis labels.
-    //! @param prediction forecast value, marked with a triangle, or null
+    //! @param prediction forecast value, marked with a needle, or null
     public function draw(dc as Graphics.Dc, x as Number, y as Number,
                          w as Number, h as Number,
                          prediction as Float?, fg as Number) as Void {
@@ -248,7 +248,11 @@ class ChartRenderer {
         // MIN and MAX are named, not left as two bare numbers: which end of
         // the axis is which is obvious on a chart you are staring at and not
         // at all obvious on one you glance at mid-interval.
-        var stackLabels = h >= 5 * ah;
+        // Stacking the word over its number needs four line heights plus
+        // clearance; laying them side by side instead costs a third more
+        // gutter, and the gutter is width taken straight off the plot.
+        var stackLabels = h >= 9 * ah / 2;
+        var nameLabels = true;
         if (_showAxis) {
             // Measure what is actually drawn. Adding the word and the number
             // separately leaves out the space between them, and the label
@@ -256,9 +260,18 @@ class ChartRenderer {
             // rectangle entirely on eight of the SDK's devices.
             var numW = dc.getTextWidthInPixels("88", axisFont);
             var wordW = dc.getTextWidthInPixels("MAX", axisFont);
-            axisW = (stackLabels ? ((numW > wordW) ? numW : wordW)
-                                 : dc.getTextWidthInPixels("MAX 88", axisFont))
-                    + 4;
+            if (stackLabels) {
+                axisW = ((numW > wordW) ? numW : wordW) + 4;
+            } else {
+                axisW = dc.getTextWidthInPixels("MAX 88", axisFont) + 4;
+                if (axisW > w / 4) {
+                    // Short and wide: side by side, the words cost a third of
+                    // the plot. The numbers are the data and the words are
+                    // only a convenience, so the convenience goes first.
+                    nameLabels = false;
+                    axisW = numW + 4;
+                }
+            }
         }
         var px0 = x + axisW;
         var pw = w - axisW;
@@ -294,11 +307,13 @@ class ChartRenderer {
                 dc.drawText(lx, baseY - ah, axisFont, lo.format("%d"),
                     Graphics.TEXT_JUSTIFY_RIGHT);
             } else {
-                // Too short to stack: word and number share a line.
+                // Too short to stack: word and number share a line, or the
+                // number goes alone where the words will not fit.
+                var top = nameLabels ? "MAX " + hi.format("%d") : hi.format("%d");
+                var bot = nameLabels ? "MIN " + lo.format("%d") : lo.format("%d");
                 dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-                dc.drawText(lx, y, axisFont, "MAX " + hi.format("%d"),
-                    Graphics.TEXT_JUSTIFY_RIGHT);
-                dc.drawText(lx, baseY - ah, axisFont, "MIN " + lo.format("%d"),
+                dc.drawText(lx, y, axisFont, top, Graphics.TEXT_JUSTIFY_RIGHT);
+                dc.drawText(lx, baseY - ah, axisFont, bot,
                     Graphics.TEXT_JUSTIFY_RIGHT);
             }
         }
@@ -359,37 +374,29 @@ class ChartRenderer {
             havePrev = true;
         }
 
-        // Forecast marker at the right edge: a triangle pointing the way the
-        // level is heading, sitting at the height it is heading to. The dot
-        // this replaces said "something is here" without saying what, and read
-        // as a stray sample rather than as a projection.
+        // Forecast: a needle at the right-hand edge, pointing in at the level
+        // the trend is heading to. It reads the way a dashboard pointer does,
+        // which is the whole idea: a mark on the outside of the scale saying
+        // where the value is going, not a data point of its own. It replaced
+        // a small grey dot that sat inside the trace and read as a stray
+        // sample.
         if (prediction != null && havePrev) {
-            var tri = pw / 12;
-            if (tri < 4) { tri = 4; }
-            if (tri > 9) { tri = 9; }
+            var tri = h / 8;
+            if (tri < 7) { tri = 7; }
+            if (tri > 20) { tri = 20; }
             var ex = px0 + pw;
-            // Keep the whole marker on the plot; toY() already clamps the
-            // value, but the triangle is drawn around it and would spill.
+            // The apex reaches into the plot; the base sits on the edge.
             var py = toY(prediction as Float, lo, span, y, h);
-            if (py < y + tri) { py = y + tri; }
-            if (py > baseY - tri) { py = baseY - tri; }
+            var halfB = (tri * 3 / 5);
+            if (py < y + halfB) { py = y + halfB; }
+            if (py > baseY - halfB) { py = baseY - halfB; }
 
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.setPenWidth(1);
             dc.drawLine(prevX, prevY, ex - tri, py);
 
-            // Apex leads, so the shape points down while desaturating and up
-            // while recovering; flat forecasts get a left-pointing marker
-            // rather than an arbitrary vertical one.
-            var dy = py - prevY;
             dc.setColor(Palette.forState(newestState()), Graphics.COLOR_TRANSPARENT);
-            if (dy > 2) {
-                dc.fillPolygon([[ex - tri, py - tri], [ex, py - tri], [ex - tri / 2, py]]);
-            } else if (dy < -2) {
-                dc.fillPolygon([[ex - tri, py + tri], [ex, py + tri], [ex - tri / 2, py]]);
-            } else {
-                dc.fillPolygon([[ex, py - tri], [ex, py + tri], [ex - tri, py]]);
-            }
+            dc.fillPolygon([[ex, py - halfB], [ex, py + halfB], [ex - tri, py]]);
         }
 
         dc.setPenWidth(1);

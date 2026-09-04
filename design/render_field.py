@@ -43,10 +43,10 @@ COLOUR = {
     STATE_OVERSHOOT: "#FF3B30",
     STATE_UNKNOWN: "#555555",
 }
-# Palette.labelForState() with zoneLabels on, which is the default.
+# Palette.labelForState() with plainLabels on, which is the default.
 LABEL = {
-    STATE_REOXY: "ZONE 1", STATE_STEADY: "ZONE 2", STATE_ONKIN: "ONSET",
-    STATE_CONTROL: "ZONE 2+", STATE_OVERSHOOT: "ZONE 3", STATE_UNKNOWN: "--",
+    STATE_REOXY: "RECOVER", STATE_STEADY: "HOLDING", STATE_ONKIN: "ONSET",
+    STATE_CONTROL: "DRIFTING", STATE_OVERSHOOT: "FALLING", STATE_UNKNOWN: "--",
 }
 
 # source/SmO2ControlView.mc
@@ -62,6 +62,7 @@ WINDOW_MIN_SPAN = 25.0
 FONT_RATIO = {
     "xtiny": 0.0505, "small": 0.0769, "medium": 0.0893,
     "large": 0.1000, "numberMild": 0.1111, "numberMedium": 0.1417,
+    "numberHot": 0.1600, "numberThaiHot": 0.1950,
 }
 
 
@@ -262,7 +263,10 @@ def dim(hexcol):
 
 def largest_number_font(fonts, sample, avail, max_h):
     """Port of SmO2ControlView.largestNumberFont()."""
-    for name in ("numberMedium", "numberMild", "large", "medium", "small"):
+    for name in ("numberThaiHot", "numberHot", "numberMedium", "numberMild",
+                 "large", "medium", "small"):
+        if name not in fonts:
+            continue
         if (text_w(sample, fonts[name]) <= avail
                 and fonts[name] * ROBOTO_ASCENT <= max_h):
             return fonts[name]
@@ -279,19 +283,25 @@ def y_bounds(st):
     return max(0.0, lo), min(100.0, hi)
 
 
-def draw_chart(a, st, x, y, w, h, label_em, show_axis, boxes):
+def draw_chart(a, st, x, y, w, h, label_em, show_axis, boxes, tag=""):
     """Port of ChartRenderer.draw(). Appends every drawn box to `boxes` so the
     geometry checker can look for collisions without parsing SVG."""
     lo, hi = y_bounds(st)
     span = max(1.0, hi - lo)
     label_asc = label_em * ROBOTO_ASCENT
 
-    stack = h >= 5 * label_asc
+    stack = h >= 4.5 * label_asc
+    named = True
     axis_w = 0
     if show_axis:
         num_w, word_w = text_w("88", label_em), text_w("MAX", label_em)
-        axis_w = int((max(num_w, word_w) if stack
-                      else text_w("MAX 88", label_em)) + 4)
+        if stack:
+            axis_w = int(max(num_w, word_w) + 4)
+        else:
+            axis_w = int(text_w("MAX 88", label_em) + 4)
+            if axis_w > w / 4:
+                named = False
+                axis_w = int(num_w + 4)
     px0, pw = x + axis_w, w - axis_w
     if pw < 20:
         px0, pw, axis_w = x, w, 0
@@ -320,16 +330,18 @@ def draw_chart(a, st, x, y, w, h, label_em, show_axis, boxes):
                 a(f'<text x="{lx}" y="{ytop+2*label_asc:.0f}" font-family="{FAM}" '
                   f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">'
                   f'{num:.0f}</text>')
-                boxes.append(("axis", lx - max(text_w("MAX", label_em),
-                                               text_w("88", label_em)), ytop,
+                boxes.append(("axis" + tag,
+                              lx - max(text_w("MAX", label_em),
+                                       text_w("88", label_em)), ytop,
                               lx, ytop + 2 * label_asc))
         else:
-            for txt, ytop in ((f"MAX {hi:.0f}", y),
-                              (f"MIN {lo:.0f}", base_y - label_asc)):
+            pre = ("MAX ", "MIN ") if named else ("", "")
+            for txt, ytop in ((f"{pre[0]}{hi:.0f}", y),
+                              (f"{pre[1]}{lo:.0f}", base_y - label_asc)):
                 a(f'<text x="{lx}" y="{ytop+label_asc:.0f}" font-family="{FAM}" '
                   f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">'
                   f'{txt}</text>')
-                boxes.append(("axis", lx - text_w(txt, label_em), ytop,
+                boxes.append(("axis" + tag, lx - text_w(txt, label_em), ytop,
                               lx, ytop + label_asc))
 
     for ls, _ in st["laps"]:
@@ -352,75 +364,22 @@ def draw_chart(a, st, x, y, w, h, label_em, show_axis, boxes):
           f'y2="{py(v2):.1f}" stroke="{COLOUR[s2]}" stroke-width="{lw}" '
           f'stroke-linecap="round"/>')
 
-    # Forecast: a triangle at the right edge, pointing the way it is heading.
+    # Forecast: a needle at the right edge, pointing in at the level the
+    # trend is heading to, the way a dashboard pointer marks a scale.
     if st["prediction"] is not None and win:
-        tri = min(9, max(4, pw // 12))
-        pyf = min(base_y - tri, max(y + tri, py(st["prediction"])))
+        tri = min(20, max(7, h / 8))
+        half_b = tri * 3 / 5
         ex = px0 + pw
+        pyf = min(base_y - half_b, max(y + half_b, py(st["prediction"])))
         lastx, lasty = sx(win[-1][0]), py(win[-1][1])
-        a(f'<line x1="{lastx:.1f}" y1="{lasty:.1f}" x2="{ex-tri}" '
+        a(f'<line x1="{lastx:.1f}" y1="{lasty:.1f}" x2="{ex-tri:.1f}" '
           f'y2="{pyf:.1f}" stroke="#555" stroke-width="1"/>')
-        c = COLOUR[next((w[2] for w in reversed(win)
-                         if w[2] != STATE_UNKNOWN), STATE_UNKNOWN)]
-        dy = pyf - lasty
-        if dy > 2:
-            pts = f"{ex-tri},{pyf-tri:.1f} {ex},{pyf-tri:.1f} {ex-tri/2},{pyf:.1f}"
-        elif dy < -2:
-            pts = f"{ex-tri},{pyf+tri:.1f} {ex},{pyf+tri:.1f} {ex-tri/2},{pyf:.1f}"
-        else:
-            pts = f"{ex},{pyf-tri:.1f} {ex},{pyf+tri:.1f} {ex-tri},{pyf:.1f}"
-        a(f'<polygon points="{pts}" fill="{c}"/>')
+        c = COLOUR[next((wv[2] for wv in reversed(win)
+                         if wv[2] != STATE_UNKNOWN), STATE_UNKNOWN)]
+        a(f'<polygon points="{ex:.1f},{pyf-half_b:.1f} {ex:.1f},{pyf+half_b:.1f} '
+          f'{ex-tri:.1f},{pyf:.1f}" fill="{c}"/>')
 
-    boxes.append(("chart", x, y, x + w, y + h))
-
-
-def draw_full(a, st, fonts, gx, gy, uw, uh, boxes):
-    """Port of SmO2ControlView.drawFull() plus its share of layoutTier()."""
-    label_em = fonts["xtiny"]
-    label_asc = label_em * ROBOTO_ASCENT
-    dot_r = max(3, int(label_asc / 2))
-    state_w = text_w(LABEL[st["state"]], label_em) + 2 * dot_r + PAD
-    widest_w = text_w("ZONE 2+", label_em) + 2 * dot_r + PAD
-    value_em = largest_number_font(fonts, "88.8", uw - widest_w - 3 * PAD, uh / 3)
-    value_asc = value_em * ROBOTO_ASCENT
-    head_h = max(value_asc, label_asc)
-
-    left, right, top = gx + PAD, gx + uw - PAD, gy + PAD
-    chart_x = gx + PAD
-    chart_y = int(gy + PAD + head_h + PAD)
-    chart_w = uw - 2 * PAD
-    chart_h = max(20, int(gy + uh - PAD - label_asc - PAD - chart_y))
-
-    col = COLOUR[st["state"]]
-    head_mid = top + head_h / 2
-    a(f'<text x="{left}" y="{head_mid+value_asc/2:.0f}" font-family="{FAM}" '
-      f'font-size="{value_em:.1f}" fill="{col}">{st["level"]:.1f}</text>')
-    boxes.append(("value", left, head_mid - value_asc / 2,
-                  left + text_w("88.8", value_em), head_mid + value_asc / 2))
-
-    a(f'<circle cx="{right-state_w+dot_r:.1f}" cy="{head_mid:.1f}" r="{dot_r}" '
-      f'fill="{col}"/>')
-    state_icon(a, right - state_w + dot_r, head_mid, dot_r, st["state"], "#000")
-    a(f'<text x="{right}" y="{head_mid+label_em*0.35:.0f}" font-family="{FAM}" '
-      f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">'
-      f'{LABEL[st["state"]]}</text>')
-    boxes.append(("state", right - state_w, head_mid - label_asc / 2, right,
-                  head_mid + label_asc / 2))
-
-    draw_chart(a, st, chart_x, chart_y, chart_w, chart_h, label_em, True, boxes)
-
-    sign = "+" if st["slope"] >= 0 else ""
-    rate = f'{sign}{st["slope"]:.3f}%/s'
-    load = pace_text(*st["load"])
-    foot_top = gy + uh - PAD - label_asc
-    a(f'<text x="{left}" y="{gy+uh-PAD:.0f}" font-family="{FAM}" '
-      f'font-size="{label_em:.1f}" fill="{col}">{rate}</text>')
-    a(f'<text x="{right}" y="{gy+uh-PAD:.0f}" font-family="{FAM}" '
-      f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">{load}</text>')
-    boxes.append(("rate", left, foot_top, left + text_w(rate, label_em),
-                  foot_top + label_asc))
-    boxes.append(("load", right - text_w(load, label_em), foot_top, right,
-                  foot_top + label_asc))
+    boxes.append(("chart" + tag, x, y, x + w, y + h))
 
 
 def state_icon(a, cx, cy, r, state, colour):
@@ -460,6 +419,192 @@ def state_icon(a, cx, cy, r, state, colour):
     elif state == STATE_ONKIN:
         bar(cy - gap, ph, pw)
         chevron(cy + gap, True, ph, pr, pw)
+
+
+def slab_width(y_top, y_bot, cx, cy, cr, fw):
+    """Port of SmO2ControlView.slabWidth(): glass available to a full-width
+    band, outside the inscribed rectangle. 0 on a rectangular screen."""
+    if cr <= 0:
+        return 0
+    dy = max(abs(y_top - cy), abs(y_bot - cy))
+    r_eff = cr - CIRCLE_MARGIN
+    if dy >= r_eff:
+        return 0
+    return min(fw, int(2 * math.sqrt(r_eff * r_eff - dy * dy)))
+
+
+NUMBER_FONTS = ("numberThaiHot", "numberHot", "numberMedium", "numberMild",
+                "large", "medium", "small", "xtiny")
+TEXT_FONTS = ("large", "medium", "small", "xtiny")
+
+
+def _fits(fonts, em, sample, y_top, y_bot, with_dot, cx, cy, cr, fw):
+    chord = slab_width(y_top, y_bot, cx, cy, cr, fw) or fw
+    need = text_w(sample, em) + 2 * PAD
+    if with_dot:
+        need += em * ROBOTO_ASCENT + PAD
+    return need <= chord
+
+
+def row_font_up(fonts, ladder, sample, bottom, max_asc, with_dot,
+                cx, cy, cr, fw):
+    """Port of SmO2ControlView.rowFontUp()."""
+    for name in ladder:
+        if name not in fonts:
+            continue
+        em = fonts[name]
+        asc = em * ROBOTO_ASCENT
+        if asc > max_asc or bottom - asc < 0:
+            continue
+        if _fits(fonts, em, sample, bottom - asc, bottom, with_dot,
+                 cx, cy, cr, fw):
+            return em
+    return None
+
+
+def row_font_down(fonts, ladder, sample, top, max_asc, fh, cx, cy, cr, fw):
+    """Port of SmO2ControlView.rowFontDown()."""
+    for name in ladder:
+        if name not in fonts:
+            continue
+        em = fonts[name]
+        asc = em * ROBOTO_ASCENT
+        if asc > max_asc or top + asc > fh:
+            continue
+        if _fits(fonts, em, sample, top, top + asc, False, cx, cy, cr, fw):
+            return em
+    return None
+
+
+def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
+    """Port of SmO2ControlView.drawFull() plus its share of layoutTier().
+
+    `circle` is (cx, cy, r) in field coordinates, or None on a rectangular
+    screen; `field` is (w, h) of the device context.
+    """
+    label_em = fonts["xtiny"]
+    label_asc = label_em * ROBOTO_ASCENT
+    fw, fh = field if field else (uw, uh)
+    cx, cy, cr = circle if circle else (gx + uw / 2, gy + uh / 2, 0)
+
+    state = LABEL[st["state"]]
+    load = pace_text(*st["load"])
+    sign = "+" if st["slope"] >= 0 else ""
+    rate = f'{sign}{st["slope"]:.3f}%/s'
+    col = COLOUR[st["state"]]
+
+    # --- layoutThirds() --------------------------------------------------
+    # Only for a field that *is* the screen; see layoutThirds().
+    owns = (field is not None and (cr <= 0
+            or (fh * 10 >= cr * 2 * 9 and fw * 10 >= cr * 2 * 9)))
+    band = fh // 3
+    grid = None
+    if owns and band >= 6 * PAD:
+        # Rows in a third are searched as a pair, largest first; see
+        # layoutThirds() for why a greedy search fails here.
+        cap = band - 3 * PAD - fonts["xtiny"] * ROBOTO_ASCENT
+        v_em = s_em = None
+        value_top = 0
+        for name in NUMBER_FONTS:
+            if name not in fonts:
+                continue
+            em = fonts[name]
+            asc = em * ROBOTO_ASCENT
+            if asc > cap or not _fits(fonts, em, "88.8", band - PAD - asc,
+                                      band - PAD, False, cx, cy, cr, fw):
+                continue
+            top = band - PAD - asc
+            sf = row_font_up(fonts, TEXT_FONTS, "DRIFTING", top - PAD,
+                             top - 2 * PAD, True, cx, cy, cr, fw)
+            if sf:
+                v_em, s_em, value_top = em, sf, top
+                break
+
+        # The rate is capped against the value, not the band; see
+        # layoutThirds() for why.
+        rate_cap = min(cap, v_em * ROBOTO_ASCENT * 3 / 4) if v_em else cap
+        rate_top = 2 * band + PAD
+        r_em = l_em = None
+        load_top = 0
+        for name in TEXT_FONTS:
+            if name not in fonts:
+                continue
+            em = fonts[name]
+            asc = em * ROBOTO_ASCENT
+            if asc > rate_cap or not _fits(fonts, em, "-8.888%/s", rate_top,
+                                      rate_top + asc, False, cx, cy, cr, fw):
+                continue
+            l_top = rate_top + asc + PAD
+            lf = row_font_down(fonts, TEXT_FONTS, "88:88 DEC", l_top,
+                               fh - PAD - l_top, fh, cx, cy, cr, fw)
+            if lf:
+                r_em, l_em, load_top = em, lf, l_top
+                break
+
+        ct, cb = band + PAD, 2 * band - PAD
+        cw = (slab_width(ct, cb, cx, cy, cr, fw) or fw) - 8 * PAD
+        if v_em and s_em and r_em and l_em and cw >= 180:
+            grid = (s_em, v_em, r_em, l_em,
+                    value_top - PAD - s_em * ROBOTO_ASCENT, value_top,
+                    rate_top, load_top, ct, cb, cw)
+
+    def state_group(x, mid_y, em, centred, tag):
+        asc = em * ROBOTO_ASCENT
+        dot_r = max(3, int(asc / 2))
+        tw = text_w(state, em)
+        group_w = 2 * dot_r + PAD + tw
+        x0 = x - group_w / 2 if centred else x - group_w
+        a(f'<circle cx="{x0+dot_r:.1f}" cy="{mid_y:.1f}" r="{dot_r}" '
+          f'fill="{col}"/>')
+        state_icon(a, x0 + dot_r, mid_y, dot_r, st["state"], "#000")
+        a(f'<text x="{x0+2*dot_r+PAD:.1f}" y="{mid_y+asc*0.36:.0f}" '
+          f'font-family="{FAM}" font-size="{em:.1f}" fill="#FFF">{state}</text>')
+        boxes.append((tag, x0, mid_y - asc / 2, x0 + group_w, mid_y + asc / 2))
+
+    def centred(txt, top, em, fill, tag):
+        asc = em * ROBOTO_ASCENT
+        a(f'<text x="{cx:.0f}" y="{top+asc:.0f}" font-family="{FAM}" '
+          f'font-size="{em:.1f}" fill="{fill}" text-anchor="middle">{txt}</text>')
+        boxes.append((tag, cx - text_w(txt, em) / 2, top,
+                      cx + text_w(txt, em) / 2, top + asc))
+
+    if grid:
+        s_em, v_em, r_em, l_em, sy, vy, ry, ly, ct, cb, cw = grid
+        state_group(cx, sy + s_em * ROBOTO_ASCENT / 2, s_em, True, "state-grid")
+        centred(f'{st["level"]:.1f}', vy, v_em, col, "value-grid")
+        centred(rate, ry, r_em, col, "rate-grid")
+        centred(load, ly, l_em, "#FFF", "load-grid")
+        draw_chart(a, st, cx - cw / 2, ct, cw, cb - ct, label_em, True, boxes,
+                   "-grid")
+        return
+
+    # --- layoutTwoRow() --------------------------------------------------
+    dot_r = max(3, int(label_asc / 2))
+    state_w = text_w("DRIFTING", label_em) + 2 * dot_r + PAD
+    value_em = largest_number_font(fonts, "88.8", uw - state_w - 3 * PAD, uh / 3)
+    value_asc = value_em * ROBOTO_ASCENT
+    head_h = max(value_asc, label_asc)
+    rate_y = gy + uh - PAD - label_asc
+    chart_y = int(gy + PAD + head_h + PAD)
+    chart_h = max(20, int(rate_y - PAD - chart_y))
+    left, right = gx + PAD, gx + uw - PAD
+    head_mid = gy + PAD + head_h / 2
+
+    a(f'<text x="{left}" y="{head_mid+value_asc/2:.0f}" font-family="{FAM}" '
+      f'font-size="{value_em:.1f}" fill="{col}">{st["level"]:.1f}</text>')
+    boxes.append(("value", left, head_mid - value_asc / 2,
+                  left + text_w("88.8", value_em), head_mid + value_asc / 2))
+    state_group(right, head_mid, label_em, False, "state")
+    a(f'<text x="{left}" y="{rate_y+label_asc:.0f}" font-family="{FAM}" '
+      f'font-size="{label_em:.1f}" fill="{col}">{rate}</text>')
+    boxes.append(("rate", left, rate_y, left + text_w(rate, label_em),
+                  rate_y + label_asc))
+    a(f'<text x="{right}" y="{rate_y+label_asc:.0f}" font-family="{FAM}" '
+      f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">{load}</text>')
+    boxes.append(("load", right - text_w(load, label_em), rate_y, right,
+                  rate_y + label_asc))
+    draw_chart(a, st, gx + PAD, chart_y, uw - 2 * PAD, chart_h, label_em, True,
+               boxes)
 
 
 def draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes):
@@ -545,7 +690,8 @@ def render(st: dict, out: str, device: str) -> None:
     ux, uy, uw, uh = usable_rect(sw, sh, 0, 0, sw, shape)
     o = frame(sw, sh, shape)
     boxes = []
-    draw_full(o.append, st, fonts, ux, uy, uw, uh, boxes)
+    circle = (sw / 2.0, sh / 2.0, sw / 2.0) if shape == "round" else None
+    draw_full(o.append, st, fonts, ux, uy, uw, uh, boxes, circle, (sw, sh))
     close(o, sw, sh, shape)
     with open(out, "w") as fh:
         fh.write("\n".join(o))
@@ -576,7 +722,9 @@ def render_layout(st, out, device, layout_name):
         gx, gy = ox + ux, oy + uy
         boxes = []
         if tier == "full":
-            draw_full(a, st, fonts, gx, gy, uw, uh, boxes)
+            circle = ((sw / 2.0 - ox, sh / 2.0 - oy, sw / 2.0)
+                      if shape == "round" else None)
+            draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle, (w, h))
         else:
             draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes)
         a(f'<rect x="{ox}" y="{oy}" width="{w}" height="{h}" fill="none" '

@@ -44,7 +44,7 @@
         <!-- second line under the number: 0 = none, 1 = metric name,
              2 = rate of change -->
         <property id="smallSecond"       type="number">2</property>
-        <property id="zoneLabels"        type="boolean">true</property>
+        <property id="plainLabels"       type="boolean">true</property>
         <!-- shape inside the state light, so the verdict does not rest on
              hue alone -->
         <property id="stateIcons"        type="boolean">true</property>
@@ -86,7 +86,7 @@
         <string id="s_rangeScope">MIN / MAX refer to</string>
         <string id="s_rangeScope_session">Whole session</string>
         <string id="s_rangeScope_lap">Current lap</string>
-        <string id="s_zoneLabels">Name states as training zones</string>
+        <string id="s_plainLabels">Plain state names</string>
         <string id="s_stateIcons">Symbol inside the state light</string>
         <string id="s_recordFit">Record SmO2 fields to FIT</string>
     </strings>
@@ -177,7 +177,7 @@
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.zoneLabels" title="@Strings.s_zoneLabels">
+        <setting propertyKey="@Properties.plainLabels" title="@Strings.s_plainLabels">
             <settingConfig type="boolean"/>
         </setting>
 

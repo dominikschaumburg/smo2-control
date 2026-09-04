@@ -13,10 +13,19 @@ module Palette {
 
     var colorBlind as Boolean = false;
 
-    //! Which vocabulary the state labels use. Zone names are the default: an
-    //! athlete already thinks in the three-zone model, and a label that maps
-    //! onto it is acted on faster than one that names the measurement.
-    var zoneLabels as Boolean = true;
+    //! Which vocabulary the state labels use. Plain behaviour words are the
+    //! default: they name what was actually measured, in language that needs
+    //! no glossary.
+    //!
+    //! Zone numbers were tried here and removed. Two reasons, and either is
+    //! enough. The watch already owns the word "zone" for its own five heart
+    //! rate and seven power zones, so this field saying ZONE 2 beside a heart
+    //! rate field saying Zone 4 is worse than saying nothing. And the deeper
+    //! problem: a zone is a statement about intensity, while this field
+    //! measures a slope. A plateau occurs below LT1 and at threshold alike,
+    //! so no mapping from slope to zone number can be correct. Zones need the
+    //! athlete's own oxygenation breakpoints, which the field does not have.
+    var plainLabels as Boolean = true;
 
     //! Colour for a kinetic state, used for both the sparkline segments and
     //! the compact-tier background.
@@ -43,27 +52,22 @@ module Palette {
 
     //! Short label for the state, for tiers that have room for text.
     //!
-    //! The zone vocabulary maps the kinetics onto the three-zone (moderate /
-    //! heavy / severe) model. The mapping is by behaviour, not by absolute
-    //! intensity, and that is the honest reading of what is measured:
+    //!   RECOVER   SmO2 rising: supply exceeds demand
+    //!   HOLDING   a plateau: a sustainable steady state
+    //!   DRIFTING  a slow decline: demanding, still controlled
+    //!   FALLING   the decline continues: no steady state exists here
+    //!   ONSET     the on-transient at the start of an effort
     //!
-    //!   SmO2 recovering under load  -> supply exceeds demand      -> Zone 1
-    //!   SmO2 holding a plateau      -> a sustainable steady state -> Zone 2
-    //!   SmO2 drifting slowly down   -> at the upper boundary      -> Zone 2+
-    //!   SmO2 still falling          -> no steady state exists     -> Zone 3
-    //!
-    //! Zone 1 and Zone 2 both plateau, so the field cannot tell an easy run
-    //! from a threshold run by kinetics alone — what it can tell is whether
-    //! the current effort has settled, which is the question being asked.
-    //! ONSET is the on-transient and belongs to no zone.
+    //! The kinetic terms are the alternative, for readers who want the names
+    //! the literature uses.
     function labelForState(state as Number) as String {
-        if (zoneLabels) {
+        if (plainLabels) {
             switch (state) {
-                case STATE_REOXY:     return "ZONE 1";
-                case STATE_STEADY:    return "ZONE 2";
+                case STATE_REOXY:     return "RECOVER";
+                case STATE_STEADY:    return "HOLDING";
                 case STATE_ONKIN:     return "ONSET";
-                case STATE_CONTROL:   return "ZONE 2+";
-                case STATE_OVERSHOOT: return "ZONE 3";
+                case STATE_CONTROL:   return "DRIFTING";
+                case STATE_OVERSHOOT: return "FALLING";
             }
             return "--";
         }
@@ -80,7 +84,7 @@ module Palette {
     //! Widest label the current vocabulary can produce. Used to reserve space
     //! once in onLayout() rather than reflowing when the state changes.
     function widestLabel() as String {
-        return zoneLabels ? "ZONE 2+" : "CONTROL";
+        return plainLabels ? "DRIFTING" : "CONTROL";
     }
 
 }

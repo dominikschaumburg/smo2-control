@@ -36,32 +36,37 @@ Fünf Zustände, jeder mit eigener Farbe:
 | Zustand | Farbe | Bedeutung | Kinetischer Name |
 |---|---|---|---|
 | **ONSET** | Orange | Rapide Desaturierung, der On-Transient zu Intervallbeginn | ON-KIN |
-| **ZONE 3** | Rot | Abfall setzt sich fort, hier existiert kein Steady State | OVER |
-| **ZONE 2+** | Gelb | Langsamer Abfall, an der Obergrenze der schweren Domäne | CONTROL |
-| **ZONE 2** | Grün | Flach, Angebot deckt Verbrauch, nachhaltiger Steady State | STEADY |
-| **ZONE 1** | Blau | Steigend, Erholung oder zu geringe Intensität | REOXY |
+| **FALLING** | Rot | Abfall setzt sich fort, hier existiert kein Steady State | OVER |
+| **DRIFTING** | Gelb | Langsamer Abfall, fordernd, aber kontrolliert | CONTROL |
+| **HOLDING** | Grün | Flach, Angebot deckt Verbrauch, nachhaltiger Steady State | STEADY |
+| **RECOVER** | Blau | Steigend, Erholung oder zu geringe Intensität | REOXY |
 
-Die Zonen-Benennung ist der Standard, weil eine Sportlerin ohnehin im
-Drei-Zonen-Modell (moderat / schwer / schwerst) denkt und ein Label, das sich
-darauf abbilden lässt, schneller in Handlung übersetzt wird als eines, das die
-Messgröße benennt. Die Zuordnung erfolgt über das **Verhalten**, nicht über die
-absolute Intensität:
+Die Labels benennen das gemessene Verhalten, in Worten, die kein Glossar
+brauchen. Die kinetischen Begriffe in der rechten Spalte sind die Alternative
+für alle, die die Namen der Literatur bevorzugen: dafür *Klartext-Zustandsnamen*
+abschalten.
 
-- SmO₂ erholt sich unter Last → Angebot übersteigt Verbrauch → Zone 1
-- SmO₂ hält ein Plateau → nachhaltiger Steady State → Zone 2
-- SmO₂ driftet langsam nach unten → an der Obergrenze → Zone 2+
-- SmO₂ fällt weiter → es existiert kein Steady State → Zone 3
+### Warum keine Zonennummern
 
-Die ehrliche Einschränkung: Zone 1 und Zone 2 zeigen beide ein Plateau, das
-Feld kann also aus der Kinetik allein keinen lockeren von einem
-Schwellenlauf unterscheiden. Es kann sagen, ob sich die aktuelle Belastung
-eingependelt hat, und genau das ist die gestellte Frage. ONSET ist der
-On-Transient und gehört zu keiner Zone.
+Zonennummern waren hier einmal eingebaut und sind wieder verschwunden. Zwei
+Gründe, und jeder einzelne genügt.
 
-Die kinetischen Namen in der rechten Spalte gibt es weiterhin: dafür
-*Zustände als Trainingszonen benennen* abschalten.
+Die Uhr besitzt das Wort „Zone" schon: für ihre eigenen fünf Herzfrequenz- und
+sieben Leistungszonen. Wenn dieses Feld ZONE 2 anzeigt, während das
+Herzfrequenzfeld daneben Zone 4 anzeigt, ist das schlechter als gar keine
+Angabe.
 
-Die wichtigste Unterscheidung ist **ON-KIN gegen OVER**. Jedes harte Intervall
+Das tiefere Problem: Eine Zone ist eine Aussage über die Intensität, dieses
+Feld misst eine Steigung. Ein Plateau tritt unterhalb von LT1 genauso auf wie
+an der Schwelle, und steigendes SmO₂ unter Last sagt, dass das Angebot den
+Verbrauch übersteigt, aber nicht bei welcher Leistung. Es kann also keine
+korrekte Abbildung von Steigung auf Zonennummer geben. Eine korrekte bräuchte
+die individuellen Muscle-Oxygenation-Breakpoints, die den *absoluten* Pegel
+verankern, und diese Information hat das Feld nicht und kann sie nicht
+erschließen. Was es sagen kann, ist, ob sich die gewählte Belastung eingependelt
+hat. Das ist eine andere, engere Behauptung, und genau die machen diese Labels.
+
+Die wichtigste Unterscheidung ist **ONSET gegen FALLING**. Jedes harte Intervall
 beginnt mit einem steilen Abfall; dieser Abfall ist noch kein Urteil. Was ein
 nachhaltiges von einem nicht nachhaltigen Intervall trennt, ist die Frage, ob
 danach das Plateau eintritt. Ein Feld, das den Transienten als „überzogen"
@@ -227,13 +232,50 @@ Drei-Feld-Layouts misst auf einer FR970 454 × 158 px, breiter als der
 Vollbildschirm einer fenix 7S, aber dort sucht niemand nach einem Verlauf.
 45 % der Höhe lässt eine Hälfte durch und schließt ein Drittel aus.
 
-Das Diagramm ist der Hauptgegenstand dieser Stufe. Es bekommt alles außer einer
-Kopf- und einer Fußzeile, und die Wertschrift ist auf ein Drittel der Höhe
-gedeckelt, damit sie es nicht verdrängen kann.
+#### Das Drittel-Raster
 
-- **Kopfzeile**: SmO₂-Wert in der Zustandsfarbe, gegenüber eine **farbige
-  Zustandsampel** und ihr Label, dieselbe Scheibe, die die diagrammlosen
-  Stufen zeigen, damit über alle Feldgrößen hinweg eine visuelle Sprache gilt
+Wo das Feld *der* Bildschirm ist, wird die Höhe gedrittelt: Metriken im obersten
+Drittel, das Diagramm im mittleren, Metriken im unteren.
+
+Gelayoutet wird dabei gegen das ganze Feld und nicht gegen das eingeschriebene
+Rechteck, und genau das ist der Punkt. Das Rechteck existiert, damit *ein* Block
+Inhalt garantiert auf dem Glas liegt. Eine einzelne Textzeile braucht nur die
+Sehne auf ihrer eigenen Höhe, und in der Nähe der Mitte eines runden Displays
+ist diese Sehne die volle Breite. Zeilenweise zu rechnen ist der Grund, warum
+der Wert auf einer FR970 72 px hoch sein darf und nicht 78 px neben ein Label
+gequetscht, und es setzt das Diagramm in den breitesten Teil der Anzeige statt
+davon eingerückt.
+
+Zwei Zeilen pro äußerem Drittel, gepackt an den **inneren** Rand und von dort
+nach außen wachsend: das Zustandslabel über dem Wert oben, die Rate über der
+externen Last unten. Jedes Drittel vom äußeren Rand her zu füllen war der erste
+Versuch und scheitert auf einem runden Display aus einem Grund, der sofort
+einleuchtet: Bei y = 4 auf einem 454-px-Kreis ist das Glas 73 px breit, dort
+passt kein einziges Wort hin. Nach innen zu packen setzt außerdem das größte
+Element am nächsten an die Mitte, wo die Sehne am breitesten ist, die beiden
+Randbedingungen ziehen also in dieselbe Richtung.
+
+Die zwei Zeilen eines Drittels werden **als Paar** dimensioniert, größte
+Variante zuerst, und die erste passende Kombination gewinnt. Einzeln
+nacheinander funktioniert es nicht: Der Wert nimmt sich die größte Schrift, die
+er bekommen kann, und schiebt sein Label damit in die Kreisspitze. Auf einer
+FR970 lässt ein 97 px hoher Wert dem Label eine Sehne von 167 px, während
+„DRIFTING" plus Ampel 180 braucht. Eine Schriftstufe beim Wert aufzugeben
+bringt dem Label zwei, und dieser Tausch ist für eine gierige Suche unsichtbar.
+
+Die Rate ist auf drei Viertel der Werthöhe gedeckelt, nicht auf das Drittel.
+Ihre Zeichenkette ist dreimal so lang, bei gleicher Höhe braucht sie also
+dreimal so viel Farbe und liest sich als Schlagzeile. Die Schlagzeile ist SmO₂.
+
+Alles, was kleiner ist als der ganze Bildschirm, fällt auf eine Kopf- und eine
+Fußzeile im nutzbaren Rechteck zurück: Wert neben Zustand, Rate neben Last.
+
+#### Was darin steht
+
+- **Wert**: der SmO₂-Wert in der Zustandsfarbe, in der Zeile darüber die
+  **farbige Zustandsampel** und ihr Label, dieselbe Scheibe, die die
+  diagrammlosen Stufen zeigen, damit über alle Feldgrößen hinweg eine visuelle
+  Sprache gilt
 - **Diagramm**: der Verlauf über das Diagrammfenster (Default 90 s), jedes
   Segment in der Farbe seines Zustands, und die **Fläche darunter gefüllt** in
   einer abgedunkelten Variante derselben Farbe. Eine dünne Linie muss man
@@ -241,15 +283,24 @@ gedeckelt, damit sie es nicht verdrängen kann.
 - **Achsen**: Gitterlinien oben, in der Mitte und unten, die Grenzwerte links
   ausdrücklich mit **MAX** und **MIN** beschriftet. Welches Ende welches ist,
   ist offensichtlich, wenn man das Diagramm betrachtet, und überhaupt nicht
-  offensichtlich, wenn man mitten im Intervall hinschaut. Die Wörter stehen
-  über ihren Zahlen, wo die Höhe dafür reicht, und daneben, wo nicht.
+  offensichtlich, wenn man mitten im Intervall hinschaut. Drei Anordnungen, je
+  nach Platz: Die Wörter stehen über ihren Zahlen, wo die Höhe dafür reicht,
+  daneben, wo nicht, und fallen ganz weg, wo sie nebeneinander mehr als ein
+  Viertel der Plotbreite kosten würden. Letzteres ist das halbseitige
+  Datenfeld, wo die Benennung ein Drittel des Diagramms gekostet hat, um etwas
+  zu sagen, was die Zahlen schon sagten.
 - **Lap-Marker** als vertikale Linien
-- **Prognose-Marker**: ein **Dreieck am rechten Rand**, auf der Höhe, auf die
-  der Wert zuläuft, und in die Richtung zeigend, in die er läuft, in der
-  Zustandsfarbe. Es ersetzt einen grauen Punkt, der „hier ist etwas" sagte,
-  ohne zu sagen was, und eher wie ein verirrter Messwert wirkte als wie eine
-  Prognose.
-- **Fußzeile**: die Rate in %/s in der Zustandsfarbe, gegenüber die externe Last
+- **Prognose-Nadel**: ein Dreieck am rechten Rand, das auf die Höhe zeigt, auf
+  die der Trend zuläuft, in der Zustandsfarbe. Es liest sich wie ein Zeiger auf
+  einem Armaturenbrett, und genau das ist die Absicht: eine Marke außen an der
+  Skala, die sagt, wohin der Wert läuft, und kein eigener Messpunkt. Es ersetzt
+  einen kleinen grauen Punkt, der mitten im Verlauf saß und wie ein verirrter
+  Messwert wirkte.
+- **Rate** in der Zustandsfarbe, darunter die **externe Last**. Bei Entkopplung
+  wird die Last rot und bekommt `DEC` angehängt; die Zeile wird einmal für die
+  breiteste Zeichenkette dimensioniert, die sie je hält, und das Wort
+  auszuschreiben würde die Pace zwei Schriftstufen kosten für ein Flag, das die
+  Farbe schon trägt.
 
 SCI wird nicht angezeigt. Die Kennzahl ist einheitenlos und in Bewegung schwer
 zu lesen, und die Rate sagt dasselbe in handlungsfähigen Einheiten. Ins FIT
@@ -300,10 +351,10 @@ bilden eine Familie: wie viele Chevrons, und in welche Richtung.
 
 | Zustand | Symbol |
 |---|---|
-| ZONE 1 | ein Chevron nach oben |
-| ZONE 2 | ein waagerechter Balken |
-| ZONE 2+ | ein Chevron nach unten |
-| ZONE 3 | zwei Chevrons nach unten, übereinander |
+| RECOVER | ein Chevron nach oben |
+| HOLDING | ein waagerechter Balken |
+| DRIFTING | ein Chevron nach unten |
+| FALLING | zwei Chevrons nach unten, übereinander |
 | ONSET | ein Balken, darunter ein abfallendes Chevron |
 
 Es sind Striche und keine gefüllten Symbole, denn ein Strich behält seine
@@ -425,7 +476,7 @@ Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
 | `baselineSec` | 60 | Länge der Baseline-Erfassung |
 | `colorBlind` | aus | Farbenblind-Palette |
 | `stateIcons` | an | Symbol in der Zustandsampel, damit das Urteil nicht allein an der Farbe hängt |
-| `zoneLabels` | an | Zustände als Trainingszonen benennen (ZONE 1/2/2+/3, ONSET) statt kinetisch (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
+| `plainLabels` | an | Zustände in Klartext benennen (RECOVER/HOLDING/DRIFTING/FALLING/ONSET) statt kinetisch (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
 | `smallMetric` | SmO₂ | Was die diagrammlosen Stufen neben der Ampel zeigen: SmO₂, Änderungsrate, THb oder Control-Index |
 | `smallSecond` | Rate | Zweite Zeile unter dieser Zahl: nichts, Name der Metrik oder Änderungsrate |
 | `rateUnit` | %/s | Einheit der angezeigten Rate: %/s oder %/min |

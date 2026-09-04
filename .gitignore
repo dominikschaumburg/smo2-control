@@ -29,3 +29,9 @@ __pycache__/
 
 # ─── Personal design notes, not published ───
 docs/concept.md
+
+# Scratch renders, regenerated on demand
+design/contact-sheet.png
+design/flat-check.png
+design/mark-*.png
+design/__pycache__/

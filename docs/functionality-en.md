@@ -33,30 +33,34 @@ Five states, each with its own colour:
 | State | Colour | Meaning | Kinetic name |
 |---|---|---|---|
 | **ONSET** | Orange | Rapid desaturation, the on-transient at interval start | ON-KIN |
-| **ZONE 3** | Red | Decline continuing, no steady state exists here | OVER |
-| **ZONE 2+** | Yellow | Slow decline, at the upper boundary of the heavy domain | CONTROL |
-| **ZONE 2** | Green | Flat, supply matches demand, a sustainable steady state | STEADY |
-| **ZONE 1** | Blue | Rising, recovery or the effort is too easy | REOXY |
+| **FALLING** | Red | Decline continuing, no steady state exists here | OVER |
+| **DRIFTING** | Yellow | Slow decline, demanding but still controlled | CONTROL |
+| **HOLDING** | Green | Flat, supply matches demand, a sustainable steady state | STEADY |
+| **RECOVER** | Blue | Rising, recovery or the effort is too easy | REOXY |
 
-The zone vocabulary is the default because an athlete already thinks in the
-three-zone (moderate / heavy / severe) model, and a label that maps onto it is
-acted on faster than one that names the measurement. The mapping is by
-**behaviour**, not by absolute intensity:
+The labels name the behaviour that was measured, in language that needs no
+glossary. The kinetic terms in the right-hand column are the alternative, for
+readers who want the names the literature uses: turn off *Plain state names*.
 
-- SmO₂ recovering under load → supply exceeds demand → Zone 1
-- SmO₂ holding a plateau → a sustainable steady state → Zone 2
-- SmO₂ drifting slowly down → at the upper boundary → Zone 2+
-- SmO₂ still falling → no steady state exists → Zone 3
+### Why not zone numbers
 
-The honest caveat: Zone 1 and Zone 2 both plateau, so the field cannot tell an
-easy run from a threshold run by kinetics alone. What it can tell is whether
-the current effort has settled, which is the question being asked. ONSET is the
-on-transient and belongs to no zone.
+Zone numbers were tried here and removed. Two reasons, and either one is
+enough on its own.
 
-The kinetic names in the right-hand column are still available: turn off
-*Name states as training zones*.
+The watch already owns the word "zone" for its own five heart rate zones and
+seven power zones. This field saying ZONE 2 beside a heart rate field saying
+Zone 4 is worse than saying nothing at all.
 
-The distinction that matters most is **ON-KIN versus OVER**. Every hard interval
+The deeper problem is that a zone is a statement about intensity and this field
+measures a slope. A plateau occurs below LT1 and at threshold alike, and SmO₂
+rising under load says supply exceeds demand without saying at what wattage. So
+no mapping from slope to zone number can be correct. A correct one needs the
+athlete's own muscle oxygenation breakpoints, anchoring the *absolute* level,
+which is information the field does not have and cannot infer. What it can tell
+you is whether the effort you have chosen has settled, which is a different and
+narrower claim, and the one these labels make.
+
+The distinction that matters most is **ONSET versus FALLING**. Every hard interval
 begins with a steep fall, and that fall is not yet a verdict. What separates a
 sustainable interval from an unsustainable one is whether the plateau arrives
 afterwards. A field that judges the transient as "overshoot" paints every hard
@@ -215,13 +219,47 @@ Size alone is the wrong test. The middle strip of a three-up layout is
 where anyone goes looking for a trend. 45 % of the height clears a half and
 excludes a third.
 
-The chart is the subject of this tier. It gets everything that is not one
-header row and one footer row, and the value font is capped at a third of the
-height so it cannot crowd it out.
+#### The thirds grid
 
-- **Header**: the SmO₂ value in the state colour, with a **coloured state
-  light** and its label opposite. It is the same disc the chart-less tiers show, so
-  one visual vocabulary runs across every size of the field
+Where the field *is* the screen, the height is divided into three: metrics in
+the top third, the chart in the middle third, metrics in the bottom third.
+
+This lays out against the whole field rather than against the inscribed
+rectangle, and that is the point. The rectangle exists so that one block of
+content is guaranteed to be on the glass. A single row of text needs only the
+chord at its own height, and near the middle of a round screen that chord is
+the full width. Working row by row is what lets the value be 72 px tall on an
+FR970 rather than 78 px squeezed beside a label, and it puts the chart in the
+widest part of the display instead of inset from it.
+
+Two rows per outer third, packed against the **inner** edge and growing
+outwards: the state label above the value at the top, the rate above the
+external load at the bottom. Filling each third from its outer edge was tried
+first and fails on a round screen for a reason that is obvious once seen: at
+y = 4 on a 454 px circle the glass is 73 px wide, so whichever row got the top
+of the top third could not hold a single word. Packing inwards also puts the
+largest element nearest the middle, where the chord is widest, so the two
+constraints agree.
+
+The two rows of a third are sized **as a pair**, largest first, and the first
+combination that fits wins. Sizing them one at a time does not work: the value
+takes the largest font it can, which pushes its label into the tip of the
+circle, and on an FR970 a 97 px value leaves the label a 167 px chord where
+"DRIFTING" plus a light needs 180. Giving up one font step on the value buys
+the label two, which is the better trade and not one a greedy search can find.
+
+The rate is capped at three quarters of the value's height rather than at the
+band. Its string is three times as long, so at equal heights it takes three
+times the ink and reads as the headline. SmO₂ is the headline.
+
+Anything smaller than the whole screen falls back to one header row and one
+footer row inside the usable rectangle: value beside state, rate beside load.
+
+#### What is in it
+
+- **Value**: the SmO₂ reading in the state colour, with the **coloured state
+  light** and its label on the row above. It is the same disc the chart-less
+  tiers show, so one visual vocabulary runs across every size of the field
 - **Chart**: the trace over the chart window (default 90 s), each segment
   coloured by the state at that point, with the **area beneath it filled** in a
   darkened version of the same colour. A thin line has to be found; a filled
@@ -229,15 +267,23 @@ height so it cannot crowd it out.
 - **Axes**: gridlines at the top, middle and bottom of the range, with the
   bounds labelled **MAX** and **MIN** on the left. Which end is which is
   obvious on a chart you are staring at and not at all obvious on one you
-  glance at mid-interval. The words stack above their numbers where there is
-  height for it and share a line where there is not.
+  glance at mid-interval. Three arrangements, by what the space allows: the
+  words stack above their numbers where there is height, share a line where
+  there is not, and drop out entirely where a shared line would cost more than
+  a quarter of the plot width. That last case is the half-screen field, where
+  naming the bounds took a third of the chart to say something the numbers
+  already said.
 - **Lap markers** as vertical lines
-- **Forecast marker**: a **triangle at the right edge**, at the height the
-  level is heading to and pointing the way it is heading, in the state colour.
-  It replaces a grey dot that said "something is here" without saying what, and
-  read as a stray sample rather than as a projection.
-- **Footer**: the rate in %/s in the state colour, and the external load
-  opposite it
+- **Forecast needle**: a triangle on the right-hand edge, pointing in at the
+  level the trend is heading to, in the state colour. It reads the way a
+  dashboard pointer does, which is the whole idea: a mark on the outside of the
+  scale saying where the value is going, not a data point of its own. It
+  replaced a small grey dot that sat inside the trace and read as a stray
+  sample.
+- **Rate** in the state colour, and the **external load** below it. Decoupling
+  turns the load red and appends `DEC`; the row is sized once for the widest
+  string it can ever hold, and spelling the word out in full would cost the
+  pace two font steps for a flag the colour already carries.
 
 SCI is not displayed. It is dimensionless and hard to read in motion, and the
 rate says the same thing in units you can act on. It is still written to FIT.
@@ -287,10 +333,10 @@ way up.
 
 | State | Symbol |
 |---|---|
-| ZONE 1 | one chevron up |
-| ZONE 2 | one horizontal bar |
-| ZONE 2+ | one chevron down |
-| ZONE 3 | two chevrons down, stacked |
+| RECOVER | one chevron up |
+| HOLDING | one horizontal bar |
+| DRIFTING | one chevron down |
+| FALLING | two chevrons down, stacked |
 | ONSET | a bar with a chevron falling away below it |
 
 They are strokes rather than filled symbols, because a stroke keeps its
@@ -410,7 +456,7 @@ does not inflate the file. Recording can be switched off.
 | `baselineSec` | 60 | Length of baseline collection |
 | `colorBlind` | off | Colour-blind palette |
 | `stateIcons` | on | Draw a symbol inside the state light, so the verdict does not rest on hue alone |
-| `zoneLabels` | on | Name the states as training zones (ZONE 1/2/2+/3, ONSET) instead of kinetically (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
+| `plainLabels` | on | Name the states in plain words (RECOVER/HOLDING/DRIFTING/FALLING/ONSET) instead of kinetically (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
 | `smallMetric` | SmO₂ | What the chart-less tiers show beside the traffic light: SmO₂, rate of change, THb or the control index |
 | `smallSecond` | Rate | Second line under that number: nothing, the name of the metric, or the rate of change |
 | `rateUnit` | %/s | Unit of the displayed rate: %/s or %/min |

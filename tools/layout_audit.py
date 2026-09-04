@@ -30,13 +30,13 @@ _spec.loader.exec_module(rf)
 # matters is the widest text each element can hold, not a plausible reading.
 STATE = {
     "level": 88.8,
-    "state": rf.STATE_CONTROL,      # "ZONE 2+", the longest state label
+    "state": rf.STATE_CONTROL,      # "DRIFTING", the longest state label
     "slope": -8.888,                # "-8.888%/s", the longest rate string
     "sci": 0.5,
     "prediction": 40.0,
     "now": 100.0,
     "laps": [],
-    "load": (None, 2.5),
+    "load": (None, 1.5),      # 11:07 /km, a wide pace string
     "window": [(t, 50.0, rf.STATE_STEADY) for t in range(11, 101)],
 }
 
@@ -86,7 +86,10 @@ def audit():
                 boxes = []
                 sink = [].append
                 if tier == "full":
-                    rf.draw_full(sink, STATE, fonts, gx, gy, uw, uh, boxes)
+                    circle = ((sw / 2.0 - ox, sh / 2.0 - oy, sw / 2.0)
+                              if shape == "round" else None)
+                    rf.draw_full(sink, STATE, fonts, gx, gy, uw, uh, boxes,
+                                 circle, (w, h))
                 else:
                     rf.draw_gauge(sink, STATE, fonts, tier, gx, gy, uw, uh,
                                   boxes)
@@ -96,6 +99,17 @@ def audit():
                 usable = (gx, gy, gx + uw, gy + uh)
                 for tag, x1, y1, x2, y2 in boxes:
                     box = (x1, y1, x2, y2)
+                    if tag.endswith("-grid"):
+                        # The thirds grid lays out against the whole field
+                        # rather than the inscribed rectangle: a row of text
+                        # needs only the chord at its own height. So being
+                        # outside the rectangle is correct here, and the test
+                        # that matters is whether it is on the glass.
+                        if not corners_on_glass(box, sw, sh, shape):
+                            problems.append(
+                                f"{where}: {tag} "
+                                f"{tuple(round(v) for v in box)} off the glass")
+                        continue
                     # A half-pixel of slack: the port measures text from font
                     # tables, the device from its own rasteriser.
                     if not (box[0] >= usable[0] - 0.5
@@ -113,15 +127,15 @@ def audit():
                 # The chart is the backdrop the axis labels sit in front of,
                 # and the state dot is drawn inside the state label's box, so
                 # neither pair is a collision.
-                exempt = {frozenset(("chart", "axis")),
-                          frozenset(("chart", "value")),
-                          frozenset(("chart", "state")),
-                          frozenset(("chart", "rate")),
-                          frozenset(("chart", "load"))}
+                # The axis labels legitimately sit inside the plot rectangle;
+                # nothing else may. The state dot is drawn inside the state
+                # label's own box, so that is not a pair either.
+                def kind(t):
+                    return t[:-5] if t.endswith("-grid") else t
                 for i in range(len(boxes)):
                     for j in range(i + 1, len(boxes)):
-                        ti, tj = boxes[i][0], boxes[j][0]
-                        if frozenset((ti, tj)) in exempt:
+                        ti, tj = kind(boxes[i][0]), kind(boxes[j][0])
+                        if frozenset((ti, tj)) == frozenset(("chart", "axis")):
                             continue
                         if overlaps(boxes[i][1:], boxes[j][1:]):
                             problems.append(

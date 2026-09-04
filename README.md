@@ -15,18 +15,22 @@ whether it reaches a plateau, and how quickly it recovers.
 
 | State | Colour | Meaning |
 |---|---|---|
-| **ZONE 1** | blue | Rising — recovery, or the effort is too easy |
-| **ZONE 2** | green | Flat — supply matches demand, a sustainable steady state |
-| **ONSET** | orange | Rapid desaturation — the on-transient at interval start |
-| **ZONE 2+** | yellow | Slow decline — at the upper boundary |
-| **ZONE 3** | red | Decline continuing — no steady state exists here |
+| **RECOVER** | blue | Rising, recovery or the effort is too easy |
+| **HOLDING** | green | Flat, supply matches demand, a sustainable steady state |
+| **ONSET** | orange | Rapid desaturation, the on-transient at interval start |
+| **DRIFTING** | yellow | Slow decline, demanding but still controlled |
+| **FALLING** | red | Decline continuing, no steady state exists here |
 
-The states are named for the three-zone model because that is the vocabulary an
-athlete already acts in; the mapping is by *behaviour*, not absolute intensity,
-and the kinetic names (REOXY / STEADY / ON-KIN / CONTROL / OVER) are a setting
-away.
+The labels name the behaviour that was measured. The kinetic terms
+(REOXY / STEADY / ON-KIN / CONTROL / OVER) are a setting away.
 
-The distinction that matters most is **ONSET vs ZONE 3**. Every hard interval
+Zone numbers are deliberately absent: the watch already owns that word for its
+own heart rate and power zones, and more importantly a zone is a claim about
+intensity while this field measures a slope. A plateau occurs below LT1 and at
+threshold alike, so no mapping from slope to zone can be correct without the
+athlete's own oxygenation breakpoints.
+
+The distinction that matters most is **ONSET vs FALLING**. Every hard interval
 starts with a steep fall; that fall is not a verdict. What separates a
 sustainable interval from an unsustainable one is whether the plateau arrives
 after it.
