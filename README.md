@@ -45,6 +45,13 @@ after it.
 > SmO2 has never been part of the native Connect IQ sensor API — if the watch
 > grabs the channel first, the field will sit in `SEARCH` forever.
 
+A watch has one 2.4 GHz radio, shared between ANT and Bluetooth, and a
+*searching* ANT channel keeps its receiver on almost continuously. So the
+reopen after a lost or never-found sensor backs off: 2, 4, 8, 16, 32 s, then a
+60 s ceiling, reset the moment a broadcast arrives. Reopening immediately, as
+the first version did, left the field searching for the whole activity
+whenever the sensor was off, and that is enough to break BLE headphone audio.
+
 ## How it works
 
 Two estimators on two timescales, because one cannot do both jobs:
@@ -72,6 +79,15 @@ All thresholds are measured against five real threshold sessions, not guessed.
 With a 60 s window the plateau slope stays inside ±0.06 %/s while the
 on-transient runs past −0.23 %/s.
 
+Three defences sit outside the classifier, so the thresholds keep their
+measured meaning: a **3-sample median** before the smoother, which outvotes the
+isolated spike a Moxy is prone to; a **dropout tolerance** of 8 s, because
+clearing a 60 s fit for one invalid reading cost the window plus its 20 s
+refill; and a **3-tick dwell** on the verdict, so a slope that steps over a
+threshold and back does not show. Measured across three sessions, the dwell
+halves the number of state runs shorter than 5 s. A dwell of four halves them
+again but costs a short recovery lap 22 points of REOXY, so three it is.
+
 **Nothing needs calibrating.** The verdict is read from the slope, and a slope
 in %/s means the same thing at any level, so sensor placement, adipose
 thickness, strap pressure and day form drop out of it. What is normalised
@@ -94,9 +110,14 @@ Three tiers, chosen once from the rendered size:
   round watch, because on a round watch the tips of the circle cannot hold
   text.
 - **Medium / Compact** — everything smaller: a **traffic light** and one
-  configurable number as a single centred group, with the rate of change on a
-  second line where there is room. A sparkline squeezed into a quarter of a
-  round watch is decoration, and it costs the space the number needs.
+  configurable number as a single centred group, with a second line where
+  there is room. A sparkline squeezed into a quarter of a round watch is
+  decoration, and it costs the space the number needs.
+
+Every value slot takes the same list, so anything can go anywhere: SmO2, the
+rate of change, THb, or the **Control Index** as per cent or as a ratio. Shown
+live, the Control Index is the amplitude of the current lap so far, and it
+lands on the recorded lap value at the lap press.
 
 ![Small tiers in a four-up layout](design/layout-4-fields-b.png)
 
@@ -149,15 +170,21 @@ It breaks the session down per lap and gives a verdict per interval:
 
 ```
  per-interval summary
-  lap        dur  start    end     rate    onkin    min    max  verdict
-  work1      179   67.7   42.3   -0.142   -1.312   41.4   67.7  sustainable (steady 37%)
-  work3      179   72.7   30.4   -0.236   -1.509   30.1   72.7  drifting (steady 0%)
+  lap        dur  start    end   drop  ratio     rate    onkin    min    max  verdict
+  lap02      359   66.0   46.4  +19.7   0.70   -0.055   -0.404   43.3   66.4  sustainable (steady 78%)
+  lap10      360   78.9   35.3  +43.6   0.45   -0.121   -1.635   34.8   79.8  sustainable (steady 51%)
 ```
+
+`drop` and `ratio` are the two forms of the **Control Index**, the amplitude of
+the interval's desaturation: `start − end` in percentage points, and the same
+drop as a fraction `end / start`. In a step test the amplitude tracks lactate,
+and it is exactly what `rate` throws away by dividing through the duration. It
+does depend on the length of the step, so compare steps of equal length.
 
 `rate` is the per-interval desaturation rate ((end − start) / duration);
 `onkin` is the steepest slope during the on-transient, which tracks metabolic
-rate. Both are also written to the FIT lap fields, so the same analysis appears
-in Garmin Connect automatically.
+rate. All of them are written to the FIT lap fields, so the same analysis
+appears in Garmin Connect automatically.
 
 The model is working when your sustainable intervals show real STEADY time and
 your hard ones do not. If they do not separate, adjust `theta_stable` first.
@@ -174,8 +201,9 @@ Settings map directly:
 
 ## Recorded to the FIT file
 
-Record fields: smoothed SmO2, trend (%/s), SCI, state, THb.
-Lap fields: desaturation rate, on-kinetics rate, SmO2 min/max.
+Record fields: smoothed SmO2, trend (%/s), state, THb.
+Lap fields: desaturation rate, Control Index (amplitude and ratio),
+on-kinetics rate, SmO2 min/max.
 Session: average SmO2. All charted in Garmin Connect.
 
 ## Project layout
@@ -184,7 +212,7 @@ Session: average SmO2. All charted in Garmin Connect.
 source/
   SmO2ControlApp.mc        AppBase — owns the ANT channel
   SmO2ControlView.mc       the data field: compute, layout tiers, rendering
-  MoxySensor.mc            ANT+ Muscle Oxygen channel, page 1 parser, reconnect
+  MoxySensor.mc            ANT+ channel, page 1 parser, backing-off reconnect
   Kinetics.mc              Holt smoothing + rolling regression + classification
   SessionCalibration.mc    baseline, session range, lap calibration
   ChartRenderer.mc         ring buffer + coloured sparkline
@@ -194,6 +222,9 @@ tools/
   kinetics_replay.py       offline model replay and parameter tuning
   fitreader.py             dependency-free FIT decoder
   layout_audit.py          geometry check across every device and layout
+docs/paper/
+  smo2-control.tex         the model as a paper: formulas, worked examples, plots
+  figures.py, build.sh     regenerate figures and numbers from a .fit, build the PDF
 design/
   render_field.py          offline SVG render of the field from real .fit data
   icon.svg, icon-mark.svg  store icon and launcher mark
@@ -203,7 +234,8 @@ design/
 
 Implemented: ANT link, kinetics, on-transient handling, state classification,
 three-tier display, FIT recording, reconnect, lap calibration, per-interval
-rates, forecast marker, and a pace/power overlay with decoupling detection.
+rates and Control Index, forecast marker, and a load overlay with decoupling
+detection.
 
 Not yet implemented: a modelled "SmO2 cost per pace unit", and recovery
 overshoot analysis.

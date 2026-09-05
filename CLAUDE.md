@@ -62,7 +62,10 @@ drawing code — so the audit only checks the watch as far as the port is
 faithful. Change one, change the other.
 
 **The synthetic invariant:** sustainable intervals (`work1`, `work2`) reach
-`STEADY` ~55 % of their time; unsustainable ones (`work3`, `work4`) ~4 %.
+`STEADY` ~55 % of their time; unsustainable ones (`work3`, `work4`) under 10 %.
+What matters is the separation, which is close to an order of magnitude, not
+the second figure on its own: the verdict dwell moved it from ~4 % to ~7 %
+without touching the sustainable ones.
 
 **The real-data invariant:** in a threshold session, work laps read `STEADY`
 45–80 % with `ON-KIN` covering the first minute, and recovery laps read `REOXY`

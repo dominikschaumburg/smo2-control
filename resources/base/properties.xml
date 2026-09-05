@@ -34,8 +34,11 @@
         <property id="baselineSec"       type="number">60</property>
         <property id="colorBlind"        type="boolean">false</property>
         <property id="showPace"          type="boolean">true</property>
-        <!-- 0 = SmO2, 1 = rate, 2 = THb, 3 = SCI: what the chart-less tiers
-             show beside the traffic light -->
+        <!-- Value slots. Same metric list everywhere: 0 = SmO2, 1 = rate,
+             2 = THb, 3 = Control Index as % , 4 = Control Index as a ratio.
+             fullMetric is the big number of the full-screen field,
+             smallMetric the one beside the traffic light. -->
+        <property id="fullMetric"        type="number">0</property>
         <property id="smallMetric"       type="number">0</property>
         <!-- 0 = %/s, 1 = %/min -->
         <property id="rateUnit"          type="number">0</property>
@@ -48,8 +51,9 @@
              meter is reporting, otherwise speed; pace when running),
              1 = pace/speed, 2 = power -->
         <property id="loadMetric"        type="number">0</property>
-        <!-- second line under the number: 0 = none, 1 = metric name,
-             2 = rate of change -->
+        <!-- second line under the number: 0 = none, 1 = metric name, then
+             the metric list offset so 2 still means the rate of change:
+             2 = rate, 3 = SmO2, 4 = THb, 5 = Control Index %, 6 = ratio -->
         <property id="smallSecond"       type="number">2</property>
         <property id="plainLabels"       type="boolean">true</property>
         <!-- shape inside the state light, so the verdict does not rest on
@@ -79,11 +83,13 @@
         <string id="s_baseline">Baseline window (s)</string>
         <string id="s_colorBlind">Colour-blind palette</string>
         <string id="s_showPace">Show pace / power</string>
+        <string id="s_fullMetric">Full screen: big number</string>
         <string id="s_smallMetric">Small fields: metric</string>
         <string id="s_metric_smo2">SmO2 (%)</string>
         <string id="s_metric_rate">Rate of change</string>
         <string id="s_metric_thb">Total haemoglobin</string>
-        <string id="s_metric_sci">Control index</string>
+        <string id="s_metric_sci">Control index (%)</string>
+        <string id="s_metric_scir">Control index (ratio)</string>
         <string id="s_rateUnit">Rate unit</string>
         <string id="s_rateUnit_sec">%/s</string>
         <string id="s_rateUnit_min">%/min</string>
@@ -91,6 +97,10 @@
         <string id="s_second_none">Nothing</string>
         <string id="s_second_label">Name of the metric</string>
         <string id="s_second_rate">Rate of change</string>
+        <string id="s_second_smo2">SmO2 (%)</string>
+        <string id="s_second_thb">Total haemoglobin</string>
+        <string id="s_second_sci">Control index (%)</string>
+        <string id="s_second_scir">Control index (ratio)</string>
         <string id="s_rangeScope">MIN / MAX refer to</string>
         <string id="s_rangeScope_session">Whole session</string>
         <string id="s_rangeScope_lap">Current lap</string>
@@ -160,12 +170,23 @@
             <settingConfig type="boolean"/>
         </setting>
 
+        <setting propertyKey="@Properties.fullMetric" title="@Strings.s_fullMetric">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.s_metric_smo2</listEntry>
+                <listEntry value="1">@Strings.s_metric_rate</listEntry>
+                <listEntry value="2">@Strings.s_metric_thb</listEntry>
+                <listEntry value="3">@Strings.s_metric_sci</listEntry>
+                <listEntry value="4">@Strings.s_metric_scir</listEntry>
+            </settingConfig>
+        </setting>
+
         <setting propertyKey="@Properties.smallMetric" title="@Strings.s_smallMetric">
             <settingConfig type="list">
                 <listEntry value="0">@Strings.s_metric_smo2</listEntry>
                 <listEntry value="1">@Strings.s_metric_rate</listEntry>
                 <listEntry value="2">@Strings.s_metric_thb</listEntry>
                 <listEntry value="3">@Strings.s_metric_sci</listEntry>
+                <listEntry value="4">@Strings.s_metric_scir</listEntry>
             </settingConfig>
         </setting>
 
@@ -173,7 +194,11 @@
             <settingConfig type="list">
                 <listEntry value="0">@Strings.s_second_none</listEntry>
                 <listEntry value="1">@Strings.s_second_label</listEntry>
+                <listEntry value="3">@Strings.s_second_smo2</listEntry>
                 <listEntry value="2">@Strings.s_second_rate</listEntry>
+                <listEntry value="4">@Strings.s_second_thb</listEntry>
+                <listEntry value="5">@Strings.s_second_sci</listEntry>
+                <listEntry value="6">@Strings.s_second_scir</listEntry>
             </settingConfig>
         </setting>
 

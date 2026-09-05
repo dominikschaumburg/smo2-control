@@ -12,6 +12,11 @@ does, and asserts three things about each cell:
 The element rectangles come from design/render_field.py, which is the port of
 the Monkey C drawing code. So this checks the port, not the watch — keep the
 two in step and it checks both.
+
+It runs the default settings. That is enough for the value slot, which is
+configurable: a wider metric sample can only select a smaller font, and every
+row is positioned from that font's ascent, so more room follows. The relation
+is monotone and the default is the tight case.
 """
 
 import importlib.util
@@ -32,7 +37,6 @@ STATE = {
     "level": 88.8,
     "state": rf.STATE_CONTROL,      # "DRIFTING", the longest state label
     "slope": -8.888,                # "-8.888%/s", the longest rate string
-    "sci": 0.5,
     "prediction": 40.0,
     "now": 100.0,
     "laps": [],

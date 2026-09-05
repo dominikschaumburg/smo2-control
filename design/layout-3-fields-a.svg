@@ -5,22 +5,22 @@
 <g transform="translate(0,0)">
 <circle cx="139.2" cy="89.4" r="27.9" fill="#00AAFF"/>
 <polyline points="126.9,96.7 139.2,82.1 151.5,96.7" stroke="#000" stroke-width="9.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="181.1" y="109.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="60.2" fill="#FFF">46.9%</text>
-<text x="227" y="151" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<text x="181.1" y="109.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="60.2" fill="#FFF">47.1%</text>
+<text x="227" y="151" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.113%/s</text>
 </g>
 <rect x="0" y="0" width="454" height="158" fill="none" stroke="#333" stroke-width="1"/>
 <g transform="translate(0,158)">
 <circle cx="113.2" cy="47.4" r="36.2" fill="#00AAFF"/>
 <polyline points="97.3,56.8 113.2,38.0 129.2,56.8" stroke="#000" stroke-width="12.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="167.5" y="73.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="78.0" fill="#FFF">46.9%</text>
-<text x="227" y="117" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<text x="167.5" y="73.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="78.0" fill="#FFF">47.1%</text>
+<text x="227" y="117" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.113%/s</text>
 </g>
 <rect x="0" y="158" width="454" height="128" fill="none" stroke="#333" stroke-width="1"/>
 <g transform="translate(0,291)">
 <circle cx="139.2" cy="39.9" r="27.9" fill="#00AAFF"/>
 <polyline points="126.9,47.2 139.2,32.6 151.5,47.2" stroke="#000" stroke-width="9.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="181.1" y="60.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="60.2" fill="#FFF">46.9%</text>
-<text x="227" y="101" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<text x="181.1" y="60.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="60.2" fill="#FFF">47.1%</text>
+<text x="227" y="101" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.113%/s</text>
 </g>
 <rect x="0" y="291" width="454" height="163" fill="none" stroke="#333" stroke-width="1"/>
 </g>

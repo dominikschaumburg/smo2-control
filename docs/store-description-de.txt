@@ -1,14 +1,10 @@
 SmO2 Control: Steady-State Intensity Monitor
 
-Ein Datenfeld für den Moxy-Sensor. Eine Frage, in Echtzeit: Bin ich im Steady
-State, oder driftet die Sättigung noch nach unten?
+Ein Datenfeld für den Moxy. Eine Frage, in Echtzeit: Bin ich im Steady State, oder driftet die Sättigung noch nach unten?
 
 Das Problem mit Absolutwerten
 
-"SmO2 = 34 %" hilft dir nicht. Der Absolutwert hängt von Sensorposition,
-Fettschichtdicke, Anpressdruck und Tagesform ab. Aussagekräftig ist die
-Kinetik: Wie schnell fällt die Sättigung zu Beginn, erreicht sie ein Plateau,
-wie schnell erholt sie sich?
+"SmO2 = 34 %" hilft dir nicht. Der Absolutwert hängt von Sensorposition, Fettschichtdicke, Anpressdruck und Tagesform ab. Aussagekräftig ist die Kinetik: Wie schnell fällt die Sättigung zu Beginn, erreicht sie ein Plateau, wie schnell erholt sie sich?
 
 Fünf Zustände, fünf Farben
 
@@ -18,74 +14,44 @@ DRIFTING (gelb): langsamer Abfall, fordernd, aber kontrolliert
 HOLDING (grün): flach, Angebot deckt Verbrauch, nachhaltiger Steady State
 RECOVER (blau): steigend, Erholung oder zu geringe Intensität
 
-Die Labels benennen das gemessene Verhalten; die kinetischen Namen (ON-KIN,
-OVER, CONTROL, STEADY, REOXY) sind eine Einstellung entfernt. Zonennummern
-fehlen absichtlich: Eine Zone ist eine Aussage über die Intensität, dieses Feld
-misst eine Steigung.
+Die Labels benennen das gemessene Verhalten; die kinetischen Namen (ON-KIN, OVER, CONTROL, STEADY, REOXY) sind eine Einstellung entfernt. Zonennummern fehlen absichtlich: Eine Zone ist eine Aussage über die Intensität, dieses Feld misst eine Steigung.
 
-Entscheidend ist ONSET gegen FALLING. Jedes harte Intervall beginnt mit einem
-steilen Abfall, und der ist noch kein Urteil; ob es nachhaltig war, entscheidet
-sich daran, ob danach ein Plateau eintritt. Deshalb hat der Transient einen
-eigenen Zustand.
+Entscheidend ist ONSET gegen FALLING. Jedes harte Intervall beginnt mit einem steilen Abfall, und der ist noch kein Urteil; ob es nachhaltig war, entscheidet sich daran, ob danach ein Plateau eintritt. Deshalb hat der Transient einen eigenen Zustand.
 
 Nichts zu kalibrieren
 
-Das Urteil kommt aus der Steigung und nicht aus dem Wert, hängt also nicht an
-Sensorstelle, Gurtdruck oder Tagesform. Nichts einzurichten: Sensor anlegen,
-starten, und die Zustände arbeiten binnen einer Minute.
+Das Urteil kommt aus der Steigung und nicht aus dem Wert, hängt also nicht an Sensorstelle, Gurtdruck oder Tagesform. Nichts einzurichten: Sensor anlegen, starten, und die Zustände arbeiten binnen einer Minute.
 
 Adaptive Anzeige
 
-Vollbild: der Wert mit einem beschrifteten Zellenraster aus MIN, AVG und MAX
-über dem Diagramm, darunter Zustandsampel mit Namen, Rate und Last. Jede Zeile
-so groß, wie ihre Breite erlaubt; auf einem Radcomputer sitzen die Zeilen an
-den Kanten und das Diagramm bekommt die Höhe dazwischen. Eingefärbte Segmente
-mit gefüllter Fläche, Gitterlinien, Lap-Marker und eine Prognose-Nadel.
+Vollbild: der Wert mit einem beschrifteten Zellenraster aus MIN, AVG und MAX über dem Diagramm, darunter Zustandsampel mit Namen, Rate und Last. Jede Zeile so groß, wie ihre Breite erlaubt; auf einem Radcomputer sitzen die Zeilen an den Kanten, das Diagramm bekommt die Höhe dazwischen. Eingefärbte Segmente mit gefüllter Fläche, Gitterlinien, Lap-Marker, Prognose-Nadel.
 
-Jedes kleinere Feld bekommt eine Ampel und eine Zahl, als Gruppe zentriert. Die
-Zahl ist einstellbar (SmO2, Rate, THb, Control-Index), darunter die Rate,
-wahlweise in %/s oder %/min. MIN/MAX und AVG je über die Einheit oder die
-Runde. Die Ampel trägt ein Symbol, damit das Urteil nicht allein an der Farbe
-hängt, dazu eine Farbenblind-Palette.
+Jedes kleinere Feld bekommt eine Ampel und eine Zahl, als Gruppe zentriert. In die große Zahl, in die zweite Zeile und ins Vollbild kann jede Metrik: SmO2, Änderungsrate, THb, Control Index als Prozent oder Verhältnis. Rate in %/s oder %/min, MIN/MAX und AVG je über Einheit oder Runde. Die Ampel trägt ein Symbol, damit das Urteil nicht allein an der Farbe hängt, dazu eine Farbenblind-Palette.
 
 Session-interne Kalibrierung
 
-Baseline-Median der ersten Minute, rollendes Session-Min/Max mit langsamer
-Relaxation gegen Ausreißer, erster Lap als Referenz, Doppel-Lap setzt zurück.
+Baseline-Median der ersten Minute, rollendes Session-Min/Max mit langsamer Relaxation gegen Ausreißer, erster Lap als Referenz, Doppel-Lap setzt zurück.
 
 Entkopplungserkennung
 
-Bleibt die Last 30 Sekunden konstant, während die Sättigung weiter
-absinkt, meldet das Feld Entkopplung: beginnende Ermüdung oder
-Effizienzverlust, in keinem Signal allein sichtbar.
+Bleibt die Last 30 Sekunden konstant, während die Sättigung weiter absinkt, meldet das Feld Entkopplung: beginnende Ermüdung oder Effizienzverlust, in keinem Signal allein sichtbar.
 
 Aufzeichnung für die Nachanalyse
 
-Pro Sekunde ins FIT: geglättete SmO2, Steigung, Control Index, Zustand,
-Gesamthämoglobin. Pro Runde: Desaturationsrate, steilste On-Kinetik-Steigung,
-Minimum, Maximum. Als Diagramm in Garmin Connect.
+Pro Sekunde ins FIT: geglättete SmO2, Steigung, Zustand, THb. Pro Runde: Desaturationsrate, Control Index als Amplitude und Verhältnis, On-Kinetik-Steigung, Min, Max. Als Diagramm in Garmin Connect.
 
 Wichtig vor der ersten Nutzung
 
-Der Moxy darf nicht zusätzlich nativ in der Sensorliste gekoppelt sein.
-Muskeloxygenierung war nie Teil der nativen Connect-IQ-Sensor-API, also öffnet
-dieses Feld einen eigenen ANT-Kanal, und ein Sensor hält nur einen. Entkopple
-ihn, dann findet das Feld ihn selbst.
+Der Moxy darf nicht zusätzlich nativ in der Sensorliste gekoppelt sein. Muskeloxygenierung war nie Teil der nativen Connect-IQ-Sensor-API, also öffnet dieses Feld einen eigenen ANT-Kanal, und ein Sensor hält nur einen. Entkopple ihn, dann findet das Feld ihn.
 
-Ungültige Messwerte und Umgebungslicht-Warnungen gelten als "keine Daten",
-niemals als 0 %. Bei Aussetzern friert der Trend ein statt eine Steigung zu
-erfinden, der Kanal verbindet sich selbst neu.
+Ungültige Messwerte und Umgebungslicht-Warnungen gelten als "keine Daten", niemals als 0 %. Bei Aussetzern friert der Trend ein statt eine Steigung zu erfinden, der Kanal verbindet sich selbst neu.
 
 Einstellbar
 
-Sensor-ID, Glättung, Prognosehorizont, Steady-State-Fenster, beide Schwellen,
-Diagrammfenster, Y-Achse, Baseline, Zustandsbenennung, Metrik und zweite Zeile
-der kleinen Felder, Rateneinheit, Symbole, Farbenblind-Modus, Last, FIT.
+Sensor-ID, Glättung, Prognosehorizont, Steady-State-Fenster, beide Schwellen, Diagrammfenster, Y-Achse, Baseline, Zustandsbenennung, Symbole, jeder Wert-Platz, Rateneinheit, Farbenblind-Modus, Last, FIT.
 
-Das Repository enthält ein Werkzeug, das dieselbe Berechnung offline auf
-eigenen .fit-Dateien rechnet, zum Abstimmen an eigenen Intervallen.
+Das Repository enthält ein Werkzeug, das dieselbe Berechnung offline auf eigenen .fit-Dateien rechnet, zum Abstimmen an eigenen Intervallen.
 
 Voraussetzungen
 
-Ein Moxy oder anderer ANT+-Muscle-Oxygen-Sensor und eine Garmin-Uhr mit ANT+:
-Forerunner 245-970, Fenix 6-8, Epix Gen 2, Enduro, MARQ Gen 2, Edge 530-1050.
+Ein Moxy oder anderer ANT+-Muscle-Oxygen-Sensor und eine Garmin-Uhr mit ANT+: Forerunner 245-970, Fenix 6-8, Epix Gen 2, Enduro, MARQ Gen 2, Edge 530-1050.

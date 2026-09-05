@@ -155,7 +155,59 @@ arrived?", forgetting is exactly the behaviour you want.
 The on-kinetics threshold is derived from θ_drift rather than being its own
 setting, so it scales automatically when you tune.
 
-### 3.4 On-transient handling
+Hysteresis of ±15 % is applied to whichever band the field is currently in, so
+that leaving a state is harder than staying in it and a slope sitting exactly
+on a boundary does not oscillate.
+
+### 3.4 Robustness against outliers
+
+A Moxy's characteristic fault is not noise but the isolated sample: a reading
+that jumps twenty points and comes straight back, or a single second reported
+as invalid or ambient light. Three defences sit at three different points,
+because they catch three different things, and all three are outside the
+classifier so the thresholds keep their measured meaning.
+
+**A median before the smoother.** The last three readings go through a median
+before anything else sees them. An average carries a third of a spike into the
+level; a median of three ignores it, because one bad sample out of three is
+outvoted. It costs one sample of delay, which against a 60 s window is
+nothing. This is also what protects MIN, AVG and MAX, which a spike would
+otherwise define for the rest of the session.
+
+**Short dropouts keep the fit.** A single invalid reading used to clear the
+whole regression window, which cost the window and its 20 s refill: about 80
+seconds of "not decided yet" bought by one bad second. The window carries a
+timestamp per sample and rescales the slope by the real span, so a hole of a
+few seconds costs accuracy rather than validity. The fit and the last verdict
+are now held for 8 seconds, which is 3 past the sensor's own stale timeout, so
+anything the sensor still calls tracking always survives. Past that the fit
+really is unsound and is dropped.
+
+**A dwell on the verdict.** A new state has to hold for three consecutive
+updates before it is shown. Hysteresis widens the band you are in; this adds
+time to it, which is what catches a slope that steps over a threshold and
+comes back.
+
+The dwell is the one that does the work, and it was measured rather than
+guessed. Counting state runs shorter than 5 seconds as flicker, across three
+real sessions: 28, 14 and 26 of them with no dwell; 22, 15 and 24 with the
+median alone; 13, 10 and 13 at a dwell of three; 8, 5 and 6 at four.
+
+Four is tempting and is not taken. Every re-entry into a state pays the dwell
+again, and a short lap has few seconds to spare: in one session a 59-second
+recovery lap fell from 72 % to 50 % REOXY at a dwell of four, which is exactly
+the documented lower bound for a recovery lap. Three halves the flicker for a
+couple of points of REOXY, and the work laps do not move at all.
+
+One structural note, because it is the kind of thing that looks like a
+simplification and is not. The dwell applies to the *displayed* verdict only.
+The on-transient logic in 3.5 runs on the raw classification and keeps its own
+counter. Driving that from the settled state deadlocks: the dwell holds ON-KIN
+for three ticks after the fall has ended, those ticks re-arm the window
+restart, the restart forces ON-KIN again, and the field never leaves the
+transient. Measured as 100 % ON-KIN across every synthetic interval.
+
+### 3.5 On-transient handling
 
 Once the regression slope drops below θ_onkin, the state is treated as an
 on-transient. When the fall ends, the regression window is **restarted**, so the
@@ -235,7 +287,7 @@ sensor mid-session.
 The lap button closes an interval: it writes the lap FIT fields, resets the lap
 min, max and average, and marks the chart. It also tells the classifier that
 the load just changed, so the old regression fit is discarded rather than
-carried across the step; see 3.4.
+carried across the step; see 3.5.
 
 That is the only manual input the field has, and it is optional. Without it the
 session-scoped numbers still work and the classifier still restarts itself
@@ -247,11 +299,11 @@ whenever the on-transient ends.
 Rates are considerably more stable between sessions than absolute values, which
 is the same reason the field needs no calibration.
 
-### SmO₂ Control Index (SCI)
+### The Control Index is not part of this
 
-A dimensionless figure: the magnitude of the regression slope divided by the
-session range, which makes it comparable across sessions and sensor
-placements. Written to the FIT, not displayed.
+It used to be: a record field, |slope| divided by the relaxing session range,
+recomputed every second. It is a per-interval amplitude now and has nothing to
+do with session calibration any more; see section 8.
 
 ### Computed but not yet used
 
@@ -374,10 +426,11 @@ all. There is no room for the average in that layout, so it is not shown.
 
 #### What is in it
 
-- **Value**: the SmO₂ reading in the state colour, with a per cent sign after
-  it. The sign is not decoration: the same field shows a rate in %/s and a THb
-  in g/dl, and a bare 58.4 beside those is one more thing to remember rather
-  than read.
+- **Value**: the big number in the state colour, SmO₂ by default and with a
+  per cent sign after it. The sign is not decoration: the same field shows a
+  rate in %/s and a THb in g/dl, and a bare 58.4 beside those is one more
+  thing to remember rather than read. The slot is configurable and takes any
+  metric the small tiers take, including either form of the Control Index.
 - **Cell grid** under the value, each cell a small grey caption over the
   number: **MIN**, **AVG**, **MAX**, in the order a scale runs. MIN and MAX are
   where the bounds used to be printed, in a gutter cut out of the chart's left
@@ -407,8 +460,13 @@ all. There is no room for the average in that layout, so it is not shown.
   and spelling the word out in full would cost the load two font steps for a
   flag the colour already carries.
 
-SCI is not displayed. It is dimensionless and hard to read in motion, and the
-rate says the same thing in units you can act on. It is still written to FIT.
+The Control Index can go in any value slot, in either form, and what it shows
+live is the amplitude of the **current** lap so far: how far this interval has
+pulled saturation down from the level it started at. That is only final at the
+lap press, but the amount so far is a real number throughout, and it is the
+same quantity the lap field records, so the number on the watch during the
+interval and the number in Garmin Connect afterwards are the same
+measurement. See section 8.
 
 ### Medium (from 120 × 70 px) and Compact (anything smaller)
 
@@ -422,8 +480,19 @@ A coloured disc is recognised pre-attentively, which a word is not. An unlit
 light is drawn as a grey ring rather than as nothing, so a sensor dropout does
 not look like a layout fault.
 
-The number is configurable: **SmO₂**, the **rate of change**, **THb** or the
-**control index**. The colour never changes meaning with it.
+The number is configurable, and so is the second line, from the same list:
+**SmO₂**, the **rate of change**, **THb**, the **Control Index in per cent**
+or the **Control Index as a ratio**. Anything can go in either slot, so a
+quarter-screen field can read SmO₂ over the Control Index, or the Control
+Index over the rate. The colour never changes meaning with any of it.
+
+Asking for the same metric in both slots falls back to naming it on the second
+line. Two identical numbers stacked on each other are not a reading, and the
+name is the useful thing the pair is missing.
+
+The second line adds a short tag where the number does not speak for itself.
+SmO₂ and the Control Index in per cent end in `%` and need none; THb reads
+`12.34 THb` and the ratio reads `0.60 SCI`.
 
 Where there is height for it, the Medium tier adds a **second line**, and its
 default is the **rate of change**. That is the more informative number: the
@@ -541,10 +610,51 @@ or club setting.
 
 - **STALE** when the event count stays unchanged for more than 5 seconds. Trend
   computation is then frozen, so a frozen reading is not mistaken for a genuine
-  slope of zero. The regression window is cleared, because fitting across a hole
-  would invent a slope that never happened.
-- On `EVENT_CHANNEL_CLOSED` the channel is reopened automatically.
-- On `RX_FAIL_GO_TO_SEARCH` the channel returns to searching.
+  slope of zero. The fit itself survives a hole of up to 8 seconds; see 3.4.
+- On `RX_FAIL_GO_TO_SEARCH` the channel returns to searching, which is ANT's
+  own fast reacquire and is left alone.
+- On `EVENT_CHANNEL_CLOSED` the channel is reopened, but not immediately.
+
+### Why reopening is deliberately slow
+
+A watch has one 2.4 GHz radio, and ANT shares it with Bluetooth. Streaming
+music to headphones is the heaviest and most latency-sensitive thing that radio
+does, and a *searching* ANT channel keeps its receiver on almost continuously.
+A channel that is tracking a sensor at 4 Hz is a modest neighbour; a channel
+that is searching is not.
+
+The first version reopened the instant the channel closed. The search timeout
+is 25 seconds, so a Moxy that was switched off, asleep, out of range, or
+already claimed by the watch's own sensor list left this field searching for
+the entire activity, in a loop it could never leave. That is the worst possible
+neighbour for BLE audio, and it showed up the way you would expect: headphone
+dropouts during activities that used the field and never otherwise.
+
+The reopen now waits, doubling each time: 2, 4, 8, 16, 32 seconds, then a 60
+second ceiling. Six attempts fall inside the first two minutes, which covers
+the ordinary case of starting the activity before the sensor is awake, and only
+a genuinely absent sensor reaches the ceiling.
+
+At the ceiling the channel searches 25 seconds in every 85, so 29 % of the
+time. Simulated over ten minutes from a cold start with no sensor present, the
+short early retries included, it is 42 % against 100 % before: ten search
+windows instead of twenty-four continuous.
+
+The ceiling is a ceiling and not a give-up, on purpose: a sensor may be
+switched on halfway through a ride and has to be found when it is. The wait
+resets to 2 seconds the moment a broadcast arrives, so a dropout after a
+successful link is always retried quickly.
+
+Two smaller points fall out of the same change. The reopen happens in
+`compute()` at 1 Hz rather than inside the ANT callback, because the callback
+should decode and return and once a second is precise enough for a backoff
+measured in seconds. And an `open()` the radio refuses is now retried on the
+same schedule instead of silently ending the link for the rest of the
+activity.
+
+While the field is waiting it still reports **SEARCH**, not "no ANT": it is
+looking for the sensor, it is merely declining to hold the radio open while it
+waits.
 
 **Validity handling.** The profile's "invalid" and "ambient light too high"
 codes are checked on the *raw* fields before scaling and yield `null`, never
@@ -567,7 +677,6 @@ from the render tick.
 |---|---|
 | `smo2`, smoothed muscle oxygenation | % |
 | `smo2Trend`, regression slope | %/s |
-| `sci`, SmO₂ Control Index | none |
 | `smo2State`, state as a number | none |
 | `thb`, total haemoglobin | g/dl |
 
@@ -578,6 +687,8 @@ from the render tick.
 | `lapDesatRate`, desaturation rate `(end − start) / lap duration` | %/s |
 | `lapOnKinRate`, steepest on-transient slope | %/s |
 | `lapSmo2Min`, `lapSmo2Max` | % |
+| `lapSciDrop`, Control Index as an amplitude `start − end` | % |
+| `lapSciRatio`, the same drop as a fraction `end / start` | none |
 
 **Session field:** `avgSmo2`, the session average. Averages only advance while
 the timer runs, so ten minutes standing around with the sensor on does not skew
@@ -586,6 +697,40 @@ the lap button.
 
 `setData()` is called only when a value actually changed, so smart recording
 does not inflate the file. Recording can be switched off.
+
+### The Control Index
+
+The Control Index is the amplitude of an interval's desaturation: how far the
+effort pulled saturation down from the level it started at. Two forms of the
+same measurement are written, because which of them travels better between
+step lengths is an open question and data should answer it rather than an
+argument. Both can also be shown live, in any value slot; see section 5.
+
+- `lapSciDrop` = start − end, in percentage points. 68.4 down to 41.2 is 27.2.
+- `lapSciRatio` = end / start, dimensionless. The same interval is 0.60.
+
+Displayed live, the same two run against the level the *current* lap started
+at, so they count up as the interval develops and land on the recorded value
+at the lap press.
+
+In a step test the amplitude tracks lactate, and it is precisely what the
+desaturation *rate* throws away: dividing by the duration is what makes the
+rate comparable between steps of different length, and the amplitude is the
+part that division removes. Across three recorded step sessions the drop rises
+monotonically through the work steps, 19.7, 29.6, 32.5, 36.8, 43.6, and the
+ratio falls with it, 0.70, 0.61, 0.54, 0.52, 0.45.
+
+It therefore depends on how long the step is, which is a property of the
+measurement and not a fault in it: **compare steps of equal length.** A
+recovery lap gives a negative drop and a ratio above 1, which is the same
+statement read the other way.
+
+Both are lap fields, and that is the point of the change. The Control Index
+used to be a record field computed as |slope| / session range, once a second.
+That was wrong twice over: it changed every second, so it never answered a
+question anyone asks, and its denominator was the relaxing session range, so
+the same effort scored differently depending on what had happened earlier in
+the session. An interval's amplitude can only be known when the interval ends.
 
 ---
 
@@ -606,14 +751,18 @@ does not inflate the file. Recording can be switched off.
 | `colorBlind` | off | Colour-blind palette |
 | `stateIcons` | on | Draw a symbol inside the state light, so the verdict does not rest on hue alone |
 | `plainLabels` | on | Name the states in plain words (RECOVER/HOLDING/DRIFTING/FALLING/ONSET) instead of kinetically (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
-| `smallMetric` | SmO₂ | What the chart-less tiers show beside the traffic light: SmO₂, rate of change, THb or the control index |
-| `smallSecond` | Rate | Second line under that number: nothing, the name of the metric, or the rate of change |
+| `fullMetric` | SmO₂ | The big number of the full-screen field, from the metric list below |
+| `smallMetric` | SmO₂ | The number beside the traffic light, from the same list |
+| `smallSecond` | Rate | Second line under that number: nothing, the name of the metric, or any metric from the list |
 | `rateUnit` | %/s | Unit of the displayed rate: %/s or %/min |
 | `rangeScope` | Session | Whether MIN/MAX report the whole session or the current lap |
 | `avgScope` | Session | The same choice for AVG, separately |
 | `showPace` | on | Pace/power/speed line including the decoupling flag |
 | `loadMetric` | Automatic | Which load that line shows: automatic (by sport), pace/speed, or power |
 | `recordFit` | on | Write SmO₂ fields to the FIT file |
+
+The metric list is the same in all three value slots: **SmO₂**, **rate of
+change**, **THb**, **Control Index (%)** and **Control Index (ratio)**.
 
 Floating-point settings are stored as integers (× 100 or × 1000) because the
 Connect IQ settings editor does not offer reliable float input across all

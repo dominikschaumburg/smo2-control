@@ -11,6 +11,7 @@
     "baselineSec": 60,
     "colorBlind": false,
     "showPace": true,
+    "fullMetric": 0,
     "smallMetric": 0,
     "smallSecond": 2,
     "rateUnit": 0,

@@ -5,7 +5,8 @@
 
     <string id="f_smo2_label">SmO2 geglättet</string>
     <string id="f_trend_label">SmO2 Trend</string>
-    <string id="f_sci_label">SmO2 Control Index</string>
+    <string id="f_lap_sci_label">SmO2-Abfall (Lap)</string>
+    <string id="f_lap_sci_ratio_label">SmO2-Verhältnis (Lap)</string>
     <string id="f_state_label">SmO2 Zustand</string>
     <string id="f_lap_rate_label">Desaturationsrate (Lap)</string>
     <string id="f_lap_min_label">SmO2 Min (Lap)</string>
@@ -30,11 +31,13 @@
     <string id="s_baseline">Baseline-Fenster (s)</string>
     <string id="s_colorBlind">Farbenblind-Palette</string>
     <string id="s_showPace">Pace / Power anzeigen</string>
+    <string id="s_fullMetric">Vollbild: große Zahl</string>
     <string id="s_smallMetric">Kleine Felder: Metrik</string>
     <string id="s_metric_smo2">SmO2 (%)</string>
     <string id="s_metric_rate">Änderungsrate</string>
     <string id="s_metric_thb">Gesamthämoglobin</string>
-    <string id="s_metric_sci">Control-Index</string>
+    <string id="s_metric_sci">Control-Index (%)</string>
+    <string id="s_metric_scir">Control-Index (Verhältnis)</string>
     <string id="s_rateUnit">Einheit der Rate</string>
     <string id="s_rateUnit_sec">%/s</string>
     <string id="s_rateUnit_min">%/min</string>
@@ -42,6 +45,10 @@
     <string id="s_second_none">Nichts</string>
     <string id="s_second_label">Name der Metrik</string>
     <string id="s_second_rate">Änderungsrate</string>
+    <string id="s_second_smo2">SmO2 (%)</string>
+    <string id="s_second_thb">Gesamthämoglobin</string>
+    <string id="s_second_sci">Control-Index (%)</string>
+    <string id="s_second_scir">Control-Index (Verhältnis)</string>
     <string id="s_rangeScope">MIN / MAX beziehen sich auf</string>
     <string id="s_rangeScope_session">Gesamte Einheit</string>
     <string id="s_rangeScope_lap">Aktuelle Runde</string>

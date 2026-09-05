@@ -21,15 +21,6 @@
             unitLabel="@Strings.f_trend_units"
             fillColor="#2F7BE8" />
 
-        <fitField id="2"
-            displayInChart="true"
-            sortOrder="2"
-            precision="3"
-            chartTitle="@Strings.f_sci_label"
-            dataLabel="@Strings.f_sci_label"
-            unitLabel="@Strings.f_sci_units"
-            fillColor="#8A2FE8" />
-
         <fitField id="3"
             displayInChart="true"
             sortOrder="3"
@@ -48,7 +39,7 @@
             unitLabel="@Strings.f_thb_units"
             fillColor="#2FA84F" />
 
-        <!-- Lap fields: Kane's per-interval desaturation rate + lap extremes -->
+        <!-- Lap fields: per-interval rate, extremes and Control Index -->
         <fitField id="5"
             displayInActivityLaps="true"
             sortOrder="5"
@@ -76,6 +67,20 @@
             precision="3"
             dataLabel="@Strings.f_lap_onkin_label"
             unitLabel="@Strings.f_trend_units" />
+
+        <fitField id="10"
+            displayInActivityLaps="true"
+            sortOrder="10"
+            precision="1"
+            dataLabel="@Strings.f_lap_sci_label"
+            unitLabel="@Strings.f_smo2_units" />
+
+        <fitField id="11"
+            displayInActivityLaps="true"
+            sortOrder="11"
+            precision="2"
+            dataLabel="@Strings.f_lap_sci_ratio_label"
+            unitLabel="@Strings.f_sci_units" />
 
         <!-- Session summary -->
         <fitField id="8"

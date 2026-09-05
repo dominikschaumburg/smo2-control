@@ -24,12 +24,21 @@ class SmO2ControlView extends WatchUi.DataField {
         TIER_FULL    = 2
     }
 
-    //! Which number the chart-less tiers put next to the traffic light.
-    enum SmallMetric {
+    //! Every number the field can put in a value slot. One list, used by the
+    //! full tier's big number, by the chart-less tiers' big number, and by
+    //! their second line, so anything can be shown anywhere.
+    //!
+    //! The two Control Index entries are the live form of the lap fields: the
+    //! amplitude of the current lap's desaturation so far, measured against
+    //! the level the lap started at, as percentage points and as a ratio. It
+    //! is only final at the lap press, but the amount so far is a real number
+    //! throughout, and it is the number that tracks lactate in a step test.
+    enum Metric {
         METRIC_SMO2 = 0,
         METRIC_RATE = 1,
         METRIC_THB  = 2,
-        METRIC_SCI  = 3
+        METRIC_SCI  = 3,   // drop from the lap start, percentage points
+        METRIC_SCIR = 4    // the same drop as a ratio
     }
 
     enum RateUnit {
@@ -53,11 +62,17 @@ class SmO2ControlView extends WatchUi.DataField {
         LOAD_POWER = 2
     }
 
-    //! The second line of a chart-less tier, under the number.
-    enum SmallSecond {
+    //! The second line of a chart-less tier, under the number. Beyond the two
+    //! special cases it is the metric list again, offset so that the old
+    //! default value of 2 still means the rate of change.
+    enum SecondLine {
         SECOND_NONE  = 0,
-        SECOND_LABEL = 1,
-        SECOND_RATE  = 2
+        SECOND_LABEL = 1,   // name the metric above instead of a second value
+        SECOND_RATE  = 2,
+        SECOND_SMO2  = 3,
+        SECOND_THB   = 4,
+        SECOND_SCI   = 5,
+        SECOND_SCIR  = 6
     }
 
     // A chart only earns its pixels above these dimensions. 180 x 110 is the
@@ -126,6 +141,7 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _yAxisMode as Number = 0;
     private var _showPace as Boolean = true;
     private var _recordFit as Boolean = true;
+    private var _fullMetric as Number = METRIC_SMO2;
     private var _smallMetric as Number = METRIC_SMO2;
     private var _rateUnit as Number = RATE_PER_SEC;
     private var _rangeScope as Number = SCOPE_SESSION;
@@ -195,7 +211,6 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _dispValue as Float? = null;
     private var _dispState as Number = STATE_UNKNOWN;
     private var _dispTrend as Float = 0.0;
-    private var _dispSci as Float = 0.0;
     private var _dispPrediction as Float? = null;
     private var _dispThb as Float? = null;
     private var _sensorState as Number = SENSOR_CLOSED;
@@ -228,6 +243,7 @@ class SmO2ControlView extends WatchUi.DataField {
         _yAxisMode = s[:yAxisMode] as Number;
         _showPace = s[:showPace] as Boolean;
         _recordFit = s[:recordFit] as Boolean;
+        _fullMetric = s[:fullMetric] as Number;
         _smallMetric = s[:smallMetric] as Number;
         _rateUnit = s[:rateUnit] as Number;
         _rangeScope = s[:rangeScope] as Number;
@@ -268,6 +284,7 @@ class SmO2ControlView extends WatchUi.DataField {
             :colorBlind     => boolProp("colorBlind", false),
             :showPace       => boolProp("showPace", true),
             :recordFit      => boolProp("recordFit", true),
+            :fullMetric     => numProp("fullMetric", 0),
             :smallMetric    => numProp("smallMetric", 0),
             :rateUnit       => numProp("rateUnit", 0),
             :rangeScope     => numProp("rangeScope", 0),
@@ -295,6 +312,7 @@ class SmO2ControlView extends WatchUi.DataField {
         var s = readSettings();
         _yAxisMode = s[:yAxisMode] as Number;
         _showPace = s[:showPace] as Boolean;
+        _fullMetric = s[:fullMetric] as Number;
         _smallMetric = s[:smallMetric] as Number;
         _rateUnit = s[:rateUnit] as Number;
         _rangeScope = s[:rangeScope] as Number;
@@ -1053,14 +1071,20 @@ class SmO2ControlView extends WatchUi.DataField {
             return;
         }
 
+        // Any reopen that has come due happens here, at 1 Hz, not in the ANT
+        // callback; see MoxySensor.tick().
+        sensor.tick();
         _sensorState = sensor.getState();
         var raw = sensor.getSmO2();
 
         if (raw == null) {
             // Stale or invalid: freeze the filter rather than inventing a
-            // slope of zero out of a frozen reading.
+            // slope of zero out of a frozen reading. The state comes back out
+            // of the filter rather than being forced to UNKNOWN here, because
+            // a one-sample dropout is not a loss of the verdict; Kinetics
+            // holds it for as long as the fit is still sound.
             _kinetics.pause();
-            _dispState = STATE_UNKNOWN;
+            _dispState = _kinetics.getState();
             _chart.push(null, STATE_UNKNOWN);
         } else {
             _kinetics.update(raw as Float);
@@ -1070,7 +1094,6 @@ class SmO2ControlView extends WatchUi.DataField {
                 _dispValue = level;
                 _dispTrend = _kinetics.getSlowSlope();
                 _dispState = _kinetics.getState();
-                _dispSci = _kinetics.getSCI(_calib.getRange());
                 _dispPrediction = _kinetics.getPrediction();
                 _chart.push(level, _dispState);
             }
@@ -1081,7 +1104,7 @@ class SmO2ControlView extends WatchUi.DataField {
 
         var fit = _fit;
         if (fit != null) {
-            fit.compute(_dispValue, _dispTrend, _dispSci, _dispState, _dispThb);
+            fit.compute(_dispValue, _dispTrend, _dispState, _dispThb);
             fit.setSessionAverage(_calib.getSessionAverage());
         }
     }
@@ -1225,7 +1248,7 @@ class SmO2ControlView extends WatchUi.DataField {
         dc.clear();
 
         var known = _dispState != STATE_UNKNOWN && _sensorState == SENSOR_TRACKING;
-        var text = metricText();
+        var text = metricText(_smallMetric);
         var textW = dc.getTextWidthInPixels(text, _valueFont);
         var groupW = 2 * _dotR + _dotGap + textW;
         var x0 = _ux + (_uw - groupW) / 2;
@@ -1269,9 +1292,9 @@ class SmO2ControlView extends WatchUi.DataField {
     //! the reading", the other "what does it mean", and neither makes the eye
     //! cross the plot to finish a question.
     //!
-    //! SCI is not on the display at all: dimensionless and hard to read in
-    //! motion, and the rate says the same thing in units you can act on. It
-    //! is still written to the FIT.
+    //! The Control Index is not on the display: it is one number per interval
+    //! and only exists once the interval ends, so it belongs in the FIT and in
+    //! the lap summary rather than in a live field.
     private function drawFull(dc as Dc, fg as Number, bg as Number) as Void {
         dc.setColor(Graphics.COLOR_TRANSPARENT, bg);
         dc.clear();
@@ -1290,7 +1313,7 @@ class SmO2ControlView extends WatchUi.DataField {
 
             // The SmO2 block: the level, then its range and mean.
             dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(mid, _valueY, _valueFont, valueText(),
+            dc.drawText(mid, _valueY, _valueFont, metricText(_fullMetric),
                 Graphics.TEXT_JUSTIFY_CENTER);
             drawCells(dc, fg);
 
@@ -1331,7 +1354,7 @@ class SmO2ControlView extends WatchUi.DataField {
         var headMid = _valueY + _headH / 2;
 
         dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(left, headMid, _valueFont, valueText(),
+        dc.drawText(left, headMid, _valueFont, metricText(_fullMetric),
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
         drawStateRow(dc, stateColor, bg, right, headMid, state, stateFont,
             Graphics.TEXT_JUSTIFY_RIGHT);
@@ -1460,14 +1483,26 @@ class SmO2ControlView extends WatchUi.DataField {
             ? _calib.getLapMax() : _calib.getMax();
     }
 
-    //! Worst-case string for the metric on show, for font sizing. The full
-    //! tier always shows SmO2 whatever the small tiers are set to.
+    //! The metric in this tier's big number slot.
+    private function primaryMetric() as Number {
+        return (_tier == TIER_FULL) ? _fullMetric : _smallMetric;
+    }
+
+    //! Worst-case string for the primary metric, for font sizing. Every
+    //! search that sizes the value runs off this, so a wider metric buys a
+    //! smaller font and never an overflow.
     private function metricSample() as String {
-        if (_tier == TIER_FULL) { return "88.8%"; }
-        switch (_smallMetric) {
+        return sampleFor(primaryMetric());
+    }
+
+    private function sampleFor(metric as Number) as String {
+        switch (metric) {
             case METRIC_RATE: return (_rateUnit == RATE_PER_MIN) ? "-88.8" : "-8.88";
             case METRIC_THB:  return "88.88";
-            case METRIC_SCI:  return "8.88";
+            // A recovery lap gives a negative drop, so the sign is part of
+            // the width; the ratio passes 1.0 on the way up.
+            case METRIC_SCI:  return "-88.8%";
+            case METRIC_SCIR: return "88.88";
         }
         return "88.8%";
     }
@@ -1477,10 +1512,13 @@ class SmO2ControlView extends WatchUi.DataField {
         return _showPace ? "-8.888%/s " + LOAD_WIDEST : "-8.888%/s";
     }
 
-    //! The chosen metric as text, without its unit.
-    private function metricText() as String {
+    //! A metric as text, carrying its unit where the unit is one character
+    //! and can ride on the number. The rate does not: at the size the big
+    //! number is set in, "%/s" would cost two font steps, and the second line
+    //! or the state row can name it for free.
+    private function metricText(metric as Number) as String {
         if (_sensorState == SENSOR_CLOSED) { return "---"; }
-        switch (_smallMetric) {
+        switch (metric) {
             case METRIC_RATE:
                 if (_dispState == STATE_UNKNOWN) { return "--"; }
                 return rateValue().format((_rateUnit == RATE_PER_MIN) ? "%.1f" : "%.2f");
@@ -1488,31 +1526,89 @@ class SmO2ControlView extends WatchUi.DataField {
                 var thb = _dispThb;
                 return (thb == null) ? "--" : (thb as Float).format("%.2f");
             case METRIC_SCI:
-                if (_dispState == STATE_UNKNOWN) { return "--"; }
-                return _dispSci.format("%.2f");
+                var drop = sciDrop();
+                return (drop == null) ? "--" : (drop as Float).format("%.1f") + "%";
+            case METRIC_SCIR:
+                var ratio = sciRatio();
+                return (ratio == null) ? "--" : (ratio as Float).format("%.2f");
         }
-        return valueText();
+        if (_dispValue == null) { return "--"; }
+        return (_dispValue as Float).format("%.1f") + "%";
+    }
+
+    //! The live Control Index: how far this lap has pulled saturation down
+    //! from the level it started at. Null until a lap reference exists.
+    //!
+    //! Measured against the lap start rather than the session max on purpose.
+    //! It is a statement about this interval, and it is the same quantity the
+    //! lap FIT field records, so the number on the watch during the interval
+    //! and the number in Garmin Connect afterwards are the same measurement.
+    private function sciDrop() as Float? {
+        var start = _calib.getLapStart();
+        var now = _dispValue;
+        if (start == null || now == null) { return null; }
+        return (start as Float) - (now as Float);
+    }
+
+    private function sciRatio() as Float? {
+        var start = _calib.getLapStart();
+        var now = _dispValue;
+        if (start == null || now == null || (start as Float) <= 1.0) { return null; }
+        return (now as Float) / (start as Float);
+    }
+
+    //! Which metric the second line carries, or -1 for the two special cases.
+    private function secondMetric() as Number {
+        switch (_smallSecond) {
+            case SECOND_RATE: return METRIC_RATE;
+            case SECOND_SMO2: return METRIC_SMO2;
+            case SECOND_THB:  return METRIC_THB;
+            case SECOND_SCI:  return METRIC_SCI;
+            case SECOND_SCIR: return METRIC_SCIR;
+        }
+        return -1;
     }
 
     //! The second line. The rate is the default because it is the more
     //! informative number: it is what the state classification is computed
-    //! from, so it is the one that moves before the colour does. Showing it
-    //! under a level that is already the rate would say the same thing twice,
-    //! so that case falls back to naming the metric.
+    //! from, so it is the one that moves before the colour does.
+    //!
+    //! Asking for the same metric twice falls back to naming it. Two
+    //! identical numbers stacked on each other are not a reading, and the
+    //! name is the useful thing the pair is missing.
     private function secondText() as String {
-        if (_smallSecond == SECOND_RATE && _smallMetric != METRIC_RATE) {
+        var m = secondMetric();
+        if (m < 0 || m == _smallMetric) {
+            return metricUnit(_smallMetric);
+        }
+        // The rate is shown with its unit and full precision: as a second
+        // line it is a rate of change, not a level, and the sign carries.
+        if (m == METRIC_RATE) {
             return trendText();
         }
-        return metricUnit();
+        return metricText(m) + metricTag(m);
     }
 
-    private function metricUnit() as String {
-        switch (_smallMetric) {
+    //! Name of a metric, for the line that names rather than shows.
+    private function metricUnit(metric as Number) as String {
+        switch (metric) {
             case METRIC_RATE: return rateUnitText();
             case METRIC_THB:  return "THb";
             case METRIC_SCI:  return "SCI";
+            case METRIC_SCIR: return "SCI RATIO";
         }
         return "SmO2";
+    }
+
+    //! Trailing tag for a second-line value whose number is not
+    //! self-describing. SmO2 and the Control Index drop end in "%", so they
+    //! need none; a bare 12.34 or 0.60 needs saying what it is.
+    private function metricTag(metric as Number) as String {
+        switch (metric) {
+            case METRIC_THB:  return " THb";
+            case METRIC_SCIR: return " SCI";
+        }
+        return "";
     }
 
     //! The rate in the configured unit. %/s is the natural unit of the
@@ -1525,15 +1621,6 @@ class SmO2ControlView extends WatchUi.DataField {
 
     private function rateUnitText() as String {
         return (_rateUnit == RATE_PER_MIN) ? "%/min" : "%/s";
-    }
-
-    //! The SmO2 level, with its unit. The per cent sign is not decoration:
-    //! the field also shows a rate in %/s and a THb in g/dl, and a bare 58.4
-    //! beside them is one more thing to remember rather than read.
-    private function valueText() as String {
-        if (_sensorState == SENSOR_CLOSED) { return "---"; }
-        if (_dispValue == null) { return "--"; }
-        return (_dispValue as Float).format("%.1f") + "%";
     }
 
     private function statusText() as String {
@@ -1590,7 +1677,6 @@ class SmO2ControlView extends WatchUi.DataField {
         _dispValue = null;
         _dispState = STATE_UNKNOWN;
         _dispTrend = 0.0;
-        _dispSci = 0.0;
         _dispPrediction = null;
         _dispThb = null;
         _loadCount = 0;

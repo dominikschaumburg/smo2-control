@@ -9,6 +9,21 @@
 // Channel constants (device type 31, period 8192, RF 57) are taken from the
 // official Connect IQ MoxyField sample.
 //
+// Reopening after a lost or never-found sensor is deliberately SLOW. A watch
+// has one 2.4 GHz radio and ANT shares it with BLE; streaming music to
+// headphones is the heaviest and most latency-sensitive thing that radio does,
+// and a searching ANT channel keeps its receiver on almost continuously.
+//
+// The first version reopened the instant the channel closed, so a Moxy that
+// was switched off, asleep, out of range or already claimed by the watch's own
+// sensor list left this field searching for the entire activity. That is the
+// worst possible neighbour for BLE audio, and it showed up as headphone
+// dropouts that did not happen without the field. The backoff below turns a
+// permanent search into 25 seconds in every 85 once it settles, without ever
+// giving up: the sensor may be switched on halfway through a ride and has to
+// be found when it is. Simulated over ten minutes with no sensor present it is
+// 42 % of the time searching against 100 % before.
+//
 
 import Toybox.Ant;
 import Toybox.Lang;
@@ -27,6 +42,15 @@ enum SensorState {
 
 //! Seconds without a new event count before the reading is considered stale.
 const STALE_TIMEOUT_MS = 5000;
+
+//! Reopen backoff after the search times out: doubling from 2 s to a 60 s
+//! ceiling. Six attempts land inside the first two minutes, which covers the
+//! ordinary case of starting the activity before the sensor is awake, and
+//! only a genuinely absent sensor ever reaches the ceiling. The ceiling is a
+//! ceiling and not a give-up on purpose, so switching the Moxy on mid-ride
+//! still works.
+const REOPEN_MIN_MS = 2000;
+const REOPEN_MAX_MS = 60000;
 
 class MoxySensor extends Ant.GenericChannel {
     private const DEVICE_TYPE = 31;
@@ -51,6 +75,12 @@ class MoxySensor extends Ant.GenericChannel {
     private var _thb as Float? = null;
     private var _pairedDeviceNumber as Number = 0;
 
+    // Deferred reopen. Timed by subtraction from _closedAtMs rather than
+    // against an absolute deadline, because System.getTimer() wraps.
+    private var _reopenPending as Boolean = false;
+    private var _closedAtMs as Number = 0;
+    private var _backoffMs as Number = $.REOPEN_MIN_MS;
+
     //! @param deviceNumber ANT device number, 0 = wildcard search
     public function initialize(deviceNumber as Number) {
         _chanAssign = new Ant.ChannelAssignment(Ant.CHANNEL_TYPE_RX_NOT_TX, Ant.NETWORK_PLUS);
@@ -71,9 +101,42 @@ class MoxySensor extends Ant.GenericChannel {
     public function open() as Boolean {
         _open = GenericChannel.open();
         _searching = true;
+        _reopenPending = false;
         _eventCount = -1;
         _lastEventMs = System.getTimer();
         return _open;
+    }
+
+    //! Called once per compute() tick. Performs a reopen that has come due.
+    //!
+    //! Reopening here rather than inside onMessage() is the point: the ANT
+    //! callback should decode and return, and a channel reopened from it
+    //! happens at whatever rate the radio produces events. Once per second is
+    //! precise enough for a backoff measured in seconds.
+    public function tick() as Void {
+        if (!_reopenPending) {
+            return;
+        }
+        if (System.getTimer() - _closedAtMs < _backoffMs) {
+            return;
+        }
+
+        // Grow the wait for the attempt after this one, before making it. An
+        // attempt that finds nothing and an attempt the radio refuses cost
+        // the same, so they back off the same way.
+        _backoffMs = _backoffMs * 2;
+        if (_backoffMs > $.REOPEN_MAX_MS) {
+            _backoffMs = $.REOPEN_MAX_MS;
+        }
+
+        if (!open()) {
+            // Refused, most likely because something else holds the sensor:
+            // the watch's own sensor list, or another field. Keep trying on
+            // the same schedule rather than never again, because whatever
+            // holds it may let go. The old code gave up here silently.
+            _reopenPending = true;
+            _closedAtMs = System.getTimer();
+        }
     }
 
     public function closeSensor() as Void {
@@ -81,6 +144,7 @@ class MoxySensor extends Ant.GenericChannel {
             GenericChannel.close();
             _open = false;
         }
+        _reopenPending = false;
         _smo2 = null;
         _thb = null;
     }
@@ -97,6 +161,9 @@ class MoxySensor extends Ant.GenericChannel {
                     _searching = false;
                     _deviceCfg = GenericChannel.getDeviceConfig();
                     _pairedDeviceNumber = _deviceCfg.deviceNumber;
+                    // Found it: the next dropout starts its own backoff from
+                    // the bottom rather than inheriting this one's ceiling.
+                    _backoffMs = $.REOPEN_MIN_MS;
                 }
                 parse(payload);
             }
@@ -104,10 +171,13 @@ class MoxySensor extends Ant.GenericChannel {
             if (Ant.MSG_ID_RF_EVENT == (payload[0] & 0xFF)) {
                 var code = payload[1] & 0xFF;
                 if (Ant.MSG_CODE_EVENT_CHANNEL_CLOSED == code) {
-                    // Search timed out or the sensor went away — reopen.
+                    // Search timed out or the sensor went away. Schedule the
+                    // reopen instead of doing it here; see the header.
                     _smo2 = null;
                     _thb = null;
-                    open();
+                    _open = false;
+                    _reopenPending = true;
+                    _closedAtMs = System.getTimer();
                 } else if (Ant.MSG_CODE_EVENT_RX_FAIL_GO_TO_SEARCH == code) {
                     _searching = true;
                     _smo2 = null;
@@ -135,7 +205,12 @@ class MoxySensor extends Ant.GenericChannel {
 
     //! Current link state, including stale detection.
     public function getState() as SensorState {
-        if (!_open) { return SENSOR_CLOSED; }
+        if (!_open) {
+            // A pending reopen still counts as searching. From the athlete's
+            // side the field is looking for the sensor; it is only declining
+            // to hold the radio open while it waits.
+            return _reopenPending ? SENSOR_SEARCHING : SENSOR_CLOSED;
+        }
         if (_searching || _eventCount < 0) { return SENSOR_SEARCHING; }
         if (System.getTimer() - _lastEventMs > $.STALE_TIMEOUT_MS) { return SENSOR_STALE; }
         return SENSOR_TRACKING;

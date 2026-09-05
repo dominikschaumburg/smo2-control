@@ -17,8 +17,8 @@
 // So there are two estimators on two timescales, which is what the kinetics
 // actually demand:
 //
-//   Holt trend (~5–15 s)   -> displayed rate, forecast, SCI
-//   Regression slope (60 s)-> the steady / drift / overshoot classification
+//   Holt trend (~5–15 s)   -> forecast needle
+//   Regression slope (60 s)-> the classification, and the displayed rate
 //
 // The regression window is a plain least-squares fit over the smoothed level.
 // It costs one pass of ~60 multiply-adds per second, which is nothing, and it
@@ -34,6 +34,28 @@
 // Both estimators carry their slope in %/s rather than %/update, because
 // compute() is not guaranteed to fire at exactly 1 Hz and the Moxy's own update
 // rate drifts. Every recursion therefore uses the measured dt.
+//
+// Three defences against outliers, at three different points, because they
+// catch three different things:
+//
+//   1. A 3-sample MEDIAN before the smoother. A Moxy's characteristic fault is
+//      an isolated sample that jumps and comes straight back; an average
+//      carries a third of that jump into the level, a median of three ignores
+//      it completely. Costs one sample of lag, which against a 60 s window is
+//      nothing.
+//   2. Short DROPOUTS keep the fit. A single invalid or ambient-light reading
+//      used to clear the whole regression window, so one bad second cost the
+//      full window plus the 20 s refill: about 80 s of "not decided yet" for a
+//      one-second fault. The window timestamps its samples and rescales by the
+//      real span, so a hole of a few seconds costs accuracy, not validity.
+//   3. A DWELL on the verdict. A new state has to hold for a few consecutive
+//      updates before it is shown. Hysteresis already widens the band you are
+//      in; this adds time to it, which is what catches a slope that steps over
+//      a threshold and back.
+//
+// All three are deliberately outside the classifier: the thresholds keep their
+// measured meaning and the chart's own colouring, which must describe a static
+// shape rather than a live opinion, stays untouched by any of it.
 //
 
 import Toybox.Lang;
@@ -140,6 +162,41 @@ class Kinetics {
     private const DT_MIN = 0.2;
     private const DT_MAX = 5.0;
 
+    // How long a hole in the data may be before the fit is abandoned rather
+    // than continued across it. Eight seconds is three past the sensor's own
+    // stale timeout, so anything the sensor still calls TRACKING is always
+    // survivable, and a 8 s hole leaves the 60 s window 87 % full.
+    private const GAP_MAX_MS = 8000;
+
+    // Consecutive updates a new verdict must hold before it is shown.
+    //
+    // Measured over three real sessions, counting state runs shorter than 5 s
+    // as flicker: 28 / 14 / 26 of them with no dwell, 13 / 10 / 13 at three,
+    // 8 / 5 / 6 at four. Four is tempting and is not taken. It costs the
+    // short recovery laps: in one session a 59 s recovery drops from 72 % to
+    // 50 % REOXY, which lands exactly on the documented lower bound, because
+    // every re-entry into a state pays the dwell again and a short lap has
+    // few seconds to spare. Three takes half the flicker for a couple of
+    // points of REOXY.
+    private const STATE_DWELL = 3;
+
+    // Median prefilter. Three is the shortest window with a majority, so it
+    // rejects one bad sample in three and adds one sample of lag.
+    private const MEDIAN_N = 3;
+    private var _med as Array<Float> = new Array<Float>[MEDIAN_N];
+    private var _medCount as Number = 0;
+    private var _medHead as Number = 0;
+
+    // First tick of the current run of missing data, 0 when data is flowing.
+    private var _staleSinceMs as Number = 0;
+
+    // Candidate verdict waiting out its dwell.
+    private var _candidate as SmO2State = STATE_UNKNOWN;
+    private var _candidateN as Number = 0;
+
+    // Consecutive updates the raw classification has said ON-KIN.
+    private var _onkinN as Number = 0;
+
     public function initialize(alpha as Float, beta as Float,
                                thetaStable as Float, thetaDrift as Float,
                                predictHorizon as Number, steadyWindowSec as Number) {
@@ -173,15 +230,17 @@ class Kinetics {
     //! @param raw Valid SmO2 reading in %
     public function update(raw as Float) as Void {
         var now = System.getTimer();
+        var value = median(raw);
+        _staleSinceMs = 0;
 
         if (_level == null) {
             // Cold start: seed the level, leave the trend at zero.
-            _level = raw;
+            _level = value;
             _trend = 0.0;
             _lastMs = now;
-            _state = STATE_UNKNOWN;
+            force(STATE_UNKNOWN);
             _window.clear();
-            _window.push(raw, now / 1000.0);
+            _window.push(value, now / 1000.0);
             return;
         }
 
@@ -190,22 +249,27 @@ class Kinetics {
             return;                       // too soon, nothing new to learn
         }
         if (dt > DT_MAX) {
-            // Long gap: resync the level, drop the stale trend rather than
-            // extrapolating across the hole. The regression window assumes a
-            // roughly even time grid, so it starts over too.
-            _level = raw;
+            // A hole in the data. Resync the level and drop the fast trend
+            // rather than extrapolating Holt across it, but keep the
+            // regression window unless the hole is long: the window carries
+            // its own timestamps and rescales by the real span, so a few
+            // missing seconds cost accuracy where starting over costs the
+            // whole minute of evidence.
+            _level = value;
             _trend = 0.0;
             _lastMs = now;
-            _state = STATE_UNKNOWN;
-            _window.clear();
-            _window.push(raw, now / 1000.0);
+            if (dt * 1000.0 > GAP_MAX_MS) {
+                force(STATE_UNKNOWN);
+                _window.clear();
+            }
+            _window.push(value, now / 1000.0);
             return;
         }
 
         var prevLevel = _level as Float;
         // Forecast forward by the *measured* dt, then correct with the sample.
         var forecast = prevLevel + _trend * dt;
-        var level = _alpha * raw + (1.0 - _alpha) * forecast;
+        var level = _alpha * value + (1.0 - _alpha) * forecast;
         var slope = (level - prevLevel) / dt;
         _trend = _beta * slope + (1.0 - _beta) * _trend;
 
@@ -222,7 +286,7 @@ class Kinetics {
 
         if (!_window.isReady()) {
             // Just after a restart we honestly do not know yet.
-            _state = STATE_ONKIN;
+            force(STATE_ONKIN);
             return;
         }
 
@@ -233,23 +297,92 @@ class Kinetics {
         // unsustainable interval begin with a steep fall; what separates them
         // is what happens *after* it. Judging the fall itself as "overshoot"
         // marks every hard interval red for its first minute.
+        //
+        // This runs on the raw classification and keeps its own counter,
+        // deliberately not on the settled state. Driving it from the settled
+        // state deadlocks: the dwell holds ON-KIN for four ticks after the
+        // fall has ended, those ticks re-arm the restart, the restart forces
+        // ON-KIN again, and the field never leaves the transient. Measured as
+        // 100 % ON-KIN across every synthetic interval.
         if (st == STATE_ONKIN) {
             if (_slowSlope < _peakTransient) {
                 _peakTransient = _slowSlope;
             }
-            _windowDirty = true;
-        } else if (_windowDirty) {
-            // The fall is over. Restart the fit so the plateau question is
-            // answered from post-transient data only, and say ON-KIN until
-            // there is enough of it to answer with.
-            _windowDirty = false;
-            _window.clear();
-            _window.push(level, now / 1000.0);
-            _state = STATE_ONKIN;
-            return;
+            _onkinN++;
+            // Only a sustained steep fall counts as a transient worth
+            // refitting from. A single tick is an outlier, and the restart is
+            // the most expensive thing in the model: it costs the window plus
+            // its refill.
+            if (_onkinN >= STATE_DWELL) {
+                _windowDirty = true;
+            }
+        } else {
+            _onkinN = 0;
+            if (_windowDirty) {
+                // The fall is over. Restart the fit so the plateau question is
+                // answered from post-transient data only, and say ON-KIN until
+                // there is enough of it to answer with.
+                _windowDirty = false;
+                _window.clear();
+                _window.push(level, now / 1000.0);
+                force(STATE_ONKIN);
+                return;
+            }
         }
 
+        _state = settle(st);
+    }
+
+    //! Median of the last MEDIAN_N raw readings. An isolated spike is a
+    //! minority of three and disappears; a genuine step survives with one
+    //! sample of delay.
+    private function median(raw as Float) as Float {
+        _med[_medHead] = raw;
+        _medHead = (_medHead + 1) % MEDIAN_N;
+        if (_medCount < MEDIAN_N) { _medCount++; }
+        if (_medCount < MEDIAN_N) {
+            return raw;                   // not enough yet to outvote anything
+        }
+        // Three elements: the median is the one that is neither the largest
+        // nor the smallest, which is cheaper to write out than to sort.
+        var a = _med[0];
+        var b = _med[1];
+        var c = _med[2];
+        if (a > b) { var t = a; a = b; b = t; }
+        if (b > c) { var t = b; b = c; c = t; }
+        if (a > b) { var t = a; a = b; b = t; }
+        return b;
+    }
+
+    //! Apply the dwell: return the verdict that should be shown, given the
+    //! freshly classified one. A change has to be repeated STATE_DWELL times
+    //! in a row before it takes effect.
+    private function settle(st as SmO2State) as SmO2State {
+        if (st == _state) {
+            _candidateN = 0;
+            return _state;
+        }
+        if (st == _candidate) {
+            _candidateN++;
+        } else {
+            _candidate = st;
+            _candidateN = 1;
+        }
+        if (_candidateN >= STATE_DWELL) {
+            _candidateN = 0;
+            return st;
+        }
+        return _state;
+    }
+
+    //! Set the state immediately, bypassing the dwell. For the events the
+    //! model knows about rather than infers: a restart, a lap press, a gap.
+    //! Waiting out a dwell on those would report a state that is known to be
+    //! over.
+    private function force(st as SmO2State) as Void {
         _state = st;
+        _candidate = st;
+        _candidateN = 0;
     }
 
     //! Slope steep enough to be an on-transient rather than a steady-state
@@ -275,18 +408,32 @@ class Kinetics {
     public function onStepChange() as Void {
         _window.clear();
         _windowDirty = false;
+        _onkinN = 0;
         _peakTransient = 0.0;
-        _state = STATE_UNKNOWN;
+        force(STATE_UNKNOWN);
     }
 
-    //! Freeze the filter while the sensor is stale, so a frozen reading is not
-    //! mistaken for a genuine "slope = 0" steady state.
+    //! Freeze the filter while there is no valid reading, so a frozen value is
+    //! not mistaken for a genuine "slope = 0" steady state.
+    //!
+    //! The last verdict and the regression window are held for GAP_MAX_MS.
+    //! Invalid and ambient-light readings are usually one sample long, and
+    //! clearing a 60 s fit for one of them cost the window plus its 20 s
+    //! refill: about 80 s of "not decided yet" bought by a single bad second.
+    //! Past the tolerance the fit really is unsound and is dropped.
     public function pause() as Void {
-        _lastMs = System.getTimer();
-        _state = STATE_UNKNOWN;
-        // A dropout leaves a hole in the time grid; refitting across it would
-        // invent a slope that never happened.
-        _window.clear();
+        var now = System.getTimer();
+        if (_staleSinceMs == 0) {
+            _staleSinceMs = now;
+        }
+        // Keep _lastMs current, so the sample that ends the gap is not also
+        // treated as a long-dt event by update(); the window's own timestamps
+        // already carry the real span.
+        _lastMs = now;
+        if (now - _staleSinceMs > GAP_MAX_MS) {
+            force(STATE_UNKNOWN);
+            _window.clear();
+        }
     }
 
     //! Drop all filter state (timer reset, sensor re-placed).
@@ -296,7 +443,11 @@ class Kinetics {
         _slowSlope = 0.0;
         _peakTransient = 0.0;
         _windowDirty = false;
-        _state = STATE_UNKNOWN;
+        _onkinN = 0;
+        _staleSinceMs = 0;
+        _medCount = 0;
+        _medHead = 0;
+        force(STATE_UNKNOWN);
         _window.clear();
     }
 
@@ -375,17 +526,5 @@ class Kinetics {
         if (p < 0.0) { p = 0.0; }
         if (p > 100.0) { p = 100.0; }
         return p;
-    }
-
-    //! SmO2 Control Index: slope magnitude normalised by the session's own
-    //! SmO2 range, so it is comparable across sessions and sensor placements.
-    //! @param range Session SmO2 range in %
-    public function getSCI(range as Float) as Float {
-        if (_level == null || range < 1.0) {
-            return 0.0;
-        }
-        var s = _slowSlope;
-        if (s < 0.0) { s = -s; }
-        return s / range;
     }
 }

@@ -164,7 +164,65 @@ Für die Frage „ist das Plateau da?" ist Vergessen genau das gewünschte Verha
 Die On-Kinetik-Schwelle ist von θ_drift abgeleitet statt eine eigene Einstellung
 zu sein, damit sie beim Tuning automatisch mitskaliert.
 
-### 3.4 Behandlung des On-Transienten
+Auf das Band, in dem das Feld gerade steht, wird eine Hysterese von ±15 %
+gelegt: Ein Zustand zu verlassen ist damit schwerer, als in ihm zu bleiben, und
+eine Steigung genau auf einer Grenze pendelt nicht.
+
+### 3.4 Robustheit gegen Ausreißer
+
+Der charakteristische Fehler eines Moxy ist nicht Rauschen, sondern der
+einzelne Messwert: eine Lesung, die um zwanzig Punkte springt und sofort
+zurückkommt, oder eine einzelne Sekunde, die als ungültig oder als
+Umgebungslicht gemeldet wird. Drei Verteidigungen sitzen an drei verschiedenen
+Stellen, weil sie drei verschiedene Dinge abfangen, und alle drei liegen
+außerhalb der Klassifikation, damit die Schwellen ihre gemessene Bedeutung
+behalten.
+
+**Ein Median vor der Glättung.** Die letzten drei Lesungen laufen durch einen
+Median, bevor irgendetwas anderes sie sieht. Ein Mittelwert trägt ein Drittel
+eines Ausschlags in den Level; ein Median aus drei ignoriert ihn, weil ein
+schlechter Wert von zwei guten überstimmt wird. Er kostet einen Messwert
+Verzögerung, was gegen ein 60-s-Fenster nichts ist. Das schützt auch MIN, AVG
+und MAX, die ein Ausschlag sonst für den Rest der Einheit definieren würde.
+
+**Kurze Aussetzer erhalten den Fit.** Ein einzelner ungültiger Wert löschte
+früher das ganze Regressionsfenster, und das kostete das Fenster plus seine
+20 s Wiederauffüllung: rund 80 Sekunden „noch nicht entschieden", erkauft von
+einer schlechten Sekunde. Das Fenster führt pro Messwert einen Zeitstempel und
+skaliert die Steigung über die echte Zeitspanne, ein Loch von wenigen Sekunden
+kostet also Genauigkeit und nicht Gültigkeit. Fit und letztes Urteil werden
+jetzt 8 Sekunden gehalten, 3 mehr als das Stale-Timeout des Sensors selbst,
+womit alles, was der Sensor noch als verbunden bezeichnet, immer überlebt.
+Darüber hinaus ist der Fit tatsächlich unsauber und wird verworfen.
+
+**Eine Verweildauer auf dem Urteil.** Ein neuer Zustand muss drei
+aufeinanderfolgende Updates halten, bevor er angezeigt wird. Die Hysterese
+verbreitert das Band, in dem man steht; das hier fügt Zeit hinzu, und genau das
+fängt eine Steigung ab, die kurz über eine Schwelle tritt und zurückkommt.
+
+Die Verweildauer ist die Maßnahme, die die Arbeit macht, und sie ist gemessen
+und nicht geraten. Zählt man Zustandsphasen unter 5 Sekunden als Flackern, über
+drei echte Einheiten: 28, 14 und 26 davon ohne Verweildauer; 22, 15 und 24 mit
+dem Median allein; 13, 10 und 13 bei einer Verweildauer von drei; 8, 5 und 6
+bei vier.
+
+Vier ist verlockend und wird nicht genommen. Jeder Wiedereintritt in einen
+Zustand zahlt die Verweildauer erneut, und eine kurze Runde hat wenige Sekunden
+übrig: In einer Einheit fiel eine 59 Sekunden lange Erholungsrunde bei einer
+Verweildauer von vier von 72 % auf 50 % REOXY, und das ist genau die
+dokumentierte Untergrenze für eine Erholungsrunde. Drei halbiert das Flackern
+für ein paar Punkte REOXY, und die Arbeitsrunden bewegen sich überhaupt nicht.
+
+Eine strukturelle Anmerkung, weil es die Art Sache ist, die wie eine
+Vereinfachung aussieht und keine ist. Die Verweildauer gilt nur für das
+*angezeigte* Urteil. Die Transienten-Logik in 3.5 läuft auf der rohen
+Klassifikation und führt einen eigenen Zähler. Sie von dem beruhigten Zustand
+zu treiben führt in eine Verklemmung: Die Verweildauer hält ON-KIN noch drei
+Ticks, nachdem der Abfall geendet hat, diese Ticks spannen den Fenster-Neustart
+wieder, der Neustart erzwingt erneut ON-KIN, und das Feld verlässt den
+Transienten nie. Gemessen als 100 % ON-KIN über jedes synthetische Intervall.
+
+### 3.5 Behandlung des On-Transienten
 
 Sobald die Regressionssteigung unter θ_onkin fällt, gilt der Zustand als
 On-Transient. Endet der Abfall, wird das Regressionsfenster **neu gestartet**,
@@ -251,7 +309,7 @@ Die Lap-Taste schließt ein Intervall ab: sie schreibt die Lap-Felder ins FIT,
 setzt Runden-Min, -Max und -Durchschnitt zurück und markiert das Diagramm.
 Außerdem teilt sie der Klassifikation mit, dass sich die Last gerade geändert
 hat, sodass der alte Regressionsfit verworfen und nicht über die Stufe
-mitgezogen wird; siehe 3.4.
+mitgezogen wird; siehe 3.5.
 
 Das ist die einzige manuelle Eingabe des Feldes, und sie ist optional. Ohne sie
 funktionieren die einheitsbezogenen Zahlen weiter, und die Klassifikation
@@ -263,11 +321,11 @@ startet sich ohnehin selbst neu, sobald der On-Transient endet.
 Raten sind zwischen Einheiten deutlich stabiler als Absolutwerte, und das ist
 derselbe Grund, aus dem das Feld keine Kalibrierung braucht.
 
-### SmO₂ Control Index (SCI)
+### Der Control Index gehört nicht hierher
 
-Einheitenlose Kennzahl: Betrag der Regressionssteigung geteilt durch die
-Session-Range. Damit ist sie über Einheiten und Sensorpositionen hinweg
-vergleichbar. Sie wird ins FIT geschrieben, aber nicht angezeigt.
+Früher schon: ein Record-Feld, |Steigung| geteilt durch die relaxierende
+Session-Range, jede Sekunde neu. Er ist jetzt eine Amplitude pro Intervall und
+hat mit der Session-Kalibrierung nichts mehr zu tun; siehe Abschnitt 8.
 
 ### Berechnet, aber noch nicht genutzt
 
@@ -399,10 +457,12 @@ entfällt dort.
 
 #### Was darin steht
 
-- **Wert**: der SmO₂-Wert in der Zustandsfarbe, mit einem Prozentzeichen
-  dahinter. Das Zeichen ist keine Dekoration: dasselbe Feld zeigt eine Rate in
-  %/s und ein THb in g/dl, und ein nacktes 58,4 daneben ist eine Sache mehr,
-  die man sich merken statt lesen muss.
+- **Wert**: die große Zahl in der Zustandsfarbe, im Standard SmO₂ und mit
+  einem Prozentzeichen dahinter. Das Zeichen ist keine Dekoration: dasselbe
+  Feld zeigt eine Rate in %/s und ein THb in g/dl, und ein nacktes 58,4
+  daneben ist eine Sache mehr, die man sich merken statt lesen muss. Der Platz
+  ist einstellbar und nimmt jede Metrik, die auch die kleinen Stufen nehmen,
+  einschließlich beider Formen des Control Index.
 - **Zellenraster** unter dem Wert, jede Zelle eine kleine graue Beschriftung
   über der Zahl: **MIN**, **AVG**, **MAX**, in der Reihenfolge, in der eine
   Skala läuft. MIN und MAX standen früher woanders: sie steckten in einer aus
@@ -434,9 +494,13 @@ entfällt dort.
   würde die Last zwei Schriftstufen kosten für ein Flag, das die Farbe schon
   trägt.
 
-SCI wird nicht angezeigt. Die Kennzahl ist einheitenlos und in Bewegung schwer
-zu lesen, und die Rate sagt dasselbe in handlungsfähigen Einheiten. Ins FIT
-wird sie weiterhin geschrieben.
+Der Control Index kann in jeden Wert-Platz, in beiden Formen, und live zeigt
+er die Amplitude der **aktuellen** Runde bis hierher: wie weit dieses
+Intervall die Sättigung von dem Niveau heruntergezogen hat, auf dem es
+begonnen hat. Endgültig ist das erst beim Lap-Druck, aber der Betrag bis
+hierher ist durchgehend eine echte Zahl, und es ist dieselbe Größe, die das
+Lap-Feld aufzeichnet. Die Zahl auf der Uhr während des Intervalls und die Zahl
+in Garmin Connect danach sind also dieselbe Messung. Siehe Abschnitt 8.
 
 ### Medium (ab 120 × 70 px) und Compact (alles darunter)
 
@@ -450,8 +514,19 @@ Eine farbige Scheibe wird präattentiv erkannt, ein Wort nicht. Eine erloschene
 Ampel wird als grauer Ring gezeichnet und nicht als gar nichts, damit ein
 Sensorabriss nicht wie ein Layoutfehler aussieht.
 
-Die Zahl ist einstellbar: **SmO₂**, die **Änderungsrate**, **THb** oder der
-**Control-Index**. Die Farbe ändert dabei nie ihre Bedeutung.
+Die Zahl ist einstellbar, und die zweite Zeile ebenso, aus derselben Liste:
+**SmO₂**, die **Änderungsrate**, **THb**, der **Control Index in Prozent**
+oder der **Control Index als Verhältnis**. Alles kann in jeden der beiden
+Plätze, ein Viertelbild-Feld kann also SmO₂ über dem Control Index zeigen oder
+den Control Index über der Rate. Die Farbe ändert dabei nie ihre Bedeutung.
+
+Dieselbe Metrik in beiden Plätzen fällt auf ihren Namen in der zweiten Zeile
+zurück. Zwei identische Zahlen übereinander sind keine Aussage, und der Name
+ist das Nützliche, das dem Paar fehlt.
+
+Die zweite Zeile ergänzt ein kurzes Kürzel, wo die Zahl nicht für sich
+spricht. SmO₂ und der Control Index in Prozent enden auf `%` und brauchen
+keines; THb liest `12.34 THb` und das Verhältnis liest `0.60 SCI`.
 
 Wo die Höhe reicht, ergänzt die Medium-Stufe eine **zweite Zeile**, im Standard
 die **Änderungsrate**. Das ist die aussagekräftigere Zahl: Die
@@ -574,11 +649,54 @@ Moxy, ein konkreter Wert verhindert Fremdkopplung im Studio oder Verein.
 
 - **STALE**, wenn der Event Count länger als 5 Sekunden unverändert bleibt. In
   diesem Fall wird die Trendberechnung eingefroren, damit ein eingefrorener
-  Messwert nicht als echte Steigung null missdeutet wird. Das Regressionsfenster
-  wird geleert, weil ein Fit über eine Lücke eine Steigung erfinden würde, die
-  es nie gab.
-- Bei `EVENT_CHANNEL_CLOSED` wird der Kanal automatisch wieder geöffnet.
-- Bei `RX_FAIL_GO_TO_SEARCH` geht der Kanal zurück in die Suche.
+  Messwert nicht als echte Steigung null missdeutet wird. Der Fit selbst
+  übersteht ein Loch von bis zu 8 Sekunden; siehe 3.4.
+- Bei `RX_FAIL_GO_TO_SEARCH` geht der Kanal zurück in die Suche, das ist ANTs
+  eigenes schnelles Wiederfinden und bleibt unangetastet.
+- Bei `EVENT_CHANNEL_CLOSED` wird der Kanal wieder geöffnet, aber nicht sofort.
+
+### Warum das Wiederöffnen absichtlich langsam ist
+
+Eine Uhr hat einen 2,4-GHz-Sender, und ANT teilt ihn mit Bluetooth.
+Musik-Streaming zu Kopfhörern ist das Schwerste und Latenzempfindlichste, was
+dieser Sender tut, und ein *suchender* ANT-Kanal hält seinen Empfänger nahezu
+durchgehend an. Ein Kanal, der einen Sensor mit 4 Hz verfolgt, ist ein
+verträglicher Nachbar; ein suchender Kanal ist es nicht.
+
+Die erste Version öffnete in dem Moment wieder, in dem der Kanal schloss. Der
+Suchtimeout liegt bei 25 Sekunden, ein Moxy, der ausgeschaltet, im Schlaf,
+außer Reichweite oder von der Sensorliste der Uhr selbst belegt war, ließ
+dieses Feld also die ganze Einheit durchsuchen, in einer Schleife, aus der es
+nicht herauskam. Das ist der schlechteste denkbare Nachbar für BLE-Audio, und
+es zeigte sich genau so, wie man es erwartet: Kopfhörer-Abbrüche in Einheiten
+mit dem Feld und sonst nie.
+
+Das Wiederöffnen wartet jetzt, mit Verdopplung: 2, 4, 8, 16, 32 Sekunden, dann
+eine Decke von 60 Sekunden. Sechs Versuche fallen in die ersten zwei Minuten,
+was den gewöhnlichen Fall abdeckt, die Einheit vor dem Aufwachen des Sensors zu
+starten, und nur ein wirklich abwesender Sensor erreicht die Decke.
+
+An der Decke sucht der Kanal 25 von je 85 Sekunden, also 29 % der Zeit. Über
+zehn Minuten ab Kaltstart ohne vorhandenen Sensor simuliert, die kurzen frühen
+Versuche eingerechnet, sind es 42 % gegen vorher 100 %: zehn Suchfenster statt
+vierundzwanzig durchgehender.
+
+Die Decke ist absichtlich eine Decke und kein Aufgeben: Ein Sensor kann mitten
+in einer Ausfahrt eingeschaltet werden und muss dann gefunden werden. Die
+Wartezeit fällt in dem Moment auf 2 Sekunden zurück, in dem ein Broadcast
+eintrifft, ein Aussetzer nach erfolgreicher Verbindung wird also immer schnell
+erneut versucht.
+
+Zwei kleinere Punkte fallen aus derselben Änderung. Das Wiederöffnen passiert
+in `compute()` bei 1 Hz und nicht im ANT-Callback, denn der Callback soll
+dekodieren und zurückkehren, und einmal pro Sekunde ist für eine in Sekunden
+gemessene Wartezeit genau genug. Und ein `open()`, das der Sender ablehnt, wird
+jetzt nach demselben Plan erneut versucht, statt die Verbindung stillschweigend
+für den Rest der Einheit zu beenden.
+
+Während des Wartens meldet das Feld weiter **SEARCH** und nicht „kein ANT": Es
+sucht den Sensor, es weigert sich nur, währenddessen den Sender offen zu
+halten.
 
 **Gültigkeitsprüfung.** Die Profil-Codes für „ungültig" und „Umgebungslicht zu
 hell" werden auf den *rohen* Feldern geprüft, bevor skaliert wird, und ergeben
@@ -601,7 +719,6 @@ ANT-Takt sauber vom Render-Takt entkoppelt.
 |---|---|
 | `smo2`, geglättete Muskeloxygenierung | % |
 | `smo2Trend`, Regressionssteigung | %/s |
-| `sci`, SmO₂ Control Index | keine |
 | `smo2State`, Zustand als Zahl | keine |
 | `thb`, Gesamthämoglobin | g/dl |
 
@@ -612,6 +729,8 @@ ANT-Takt sauber vom Render-Takt entkoppelt.
 | `lapDesatRate`, Desaturationsrate `(Ende − Start) / Lap-Dauer` | %/s |
 | `lapOnKinRate`, steilste Steigung des On-Transienten | %/s |
 | `lapSmo2Min`, `lapSmo2Max` | % |
+| `lapSciDrop`, Control Index als Amplitude `Start − Ende` | % |
+| `lapSciRatio`, derselbe Abfall als Anteil `Ende / Start` | keine |
 
 **Session-Feld:** `avgSmo2`, Durchschnitt über die Einheit. Durchschnitte
 laufen nur bei laufendem Timer weiter; zehn Minuten Stehen mit angelegtem
@@ -620,6 +739,43 @@ hinter der AVG-Zelle, den die Lap-Taste zurücksetzt.
 
 `setData()` wird nur bei tatsächlicher Wertänderung aufgerufen, damit Smart
 Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
+
+### Der Control Index
+
+Der Control Index ist die Amplitude der Entsättigung eines Intervalls: wie weit
+die Belastung die Sättigung von dem Niveau heruntergezogen hat, auf dem sie
+begonnen hat. Geschrieben werden zwei Formen derselben Messung, weil offen ist,
+welche von beiden besser zwischen Stufenlängen trägt, und das sollen Daten
+entscheiden und kein Argument. Beide lassen sich auch live anzeigen, in jedem
+Wert-Platz; siehe Abschnitt 5.
+
+- `lapSciDrop` = Start − Ende, in Prozentpunkten. 68,4 hinunter auf 41,2 ist 27,2.
+- `lapSciRatio` = Ende / Start, dimensionslos. Dasselbe Intervall ist 0,60.
+
+Live angezeigt laufen dieselben zwei gegen das Niveau, auf dem die *aktuelle*
+Runde begonnen hat, sie zählen also mit der Entwicklung des Intervalls hoch
+und landen beim Lap-Druck auf dem aufgezeichneten Wert.
+
+Im Stufentest korreliert die Amplitude mit dem Laktat, und sie ist genau das,
+was die Desaturations*rate* wegwirft: Das Teilen durch die Dauer ist es, was
+die Rate zwischen Stufen unterschiedlicher Länge vergleichbar macht, und die
+Amplitude ist der Teil, den dieses Teilen entfernt. Über drei aufgezeichnete
+Stufeneinheiten steigt der Abfall über die Arbeitsstufen monoton, 19,7, 29,6,
+32,5, 36,8, 43,6, und das Verhältnis fällt mit ihm, 0,70, 0,61, 0,54, 0,52,
+0,45.
+
+Er hängt damit daran, wie lang die Stufe ist, und das ist eine Eigenschaft der
+Messung und kein Fehler in ihr: **Stufen gleicher Länge vergleichen.** Eine
+Erholungsrunde ergibt einen negativen Abfall und ein Verhältnis über 1, was
+dieselbe Aussage von der anderen Seite gelesen ist.
+
+Beide sind Lap-Felder, und das ist der Punkt der Änderung. Der Control Index
+war früher ein Record-Feld, gerechnet als |Steigung| / Session-Range, einmal
+pro Sekunde. Das war doppelt falsch: Er änderte sich jede Sekunde und
+beantwortete damit nie eine Frage, die jemand stellt, und sein Nenner war die
+relaxierende Session-Range, dieselbe Belastung bekam also je nach dem, was
+früher in der Einheit passiert war, einen anderen Wert. Die Amplitude eines
+Intervalls kann man erst kennen, wenn das Intervall endet.
 
 ---
 
@@ -640,14 +796,19 @@ Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
 | `colorBlind` | aus | Farbenblind-Palette |
 | `stateIcons` | an | Symbol in der Zustandsampel, damit das Urteil nicht allein an der Farbe hängt |
 | `plainLabels` | an | Zustände in Klartext benennen (RECOVER/HOLDING/DRIFTING/FALLING/ONSET) statt kinetisch (REOXY/STEADY/CONTROL/OVER/ON-KIN) |
-| `smallMetric` | SmO₂ | Was die diagrammlosen Stufen neben der Ampel zeigen: SmO₂, Änderungsrate, THb oder Control-Index |
-| `smallSecond` | Rate | Zweite Zeile unter dieser Zahl: nichts, Name der Metrik oder Änderungsrate |
+| `fullMetric` | SmO₂ | Die große Zahl des ganzseitigen Feldes, aus der Metrik-Liste |
+| `smallMetric` | SmO₂ | Die Zahl neben der Ampel, aus derselben Liste |
+| `smallSecond` | Rate | Zweite Zeile unter dieser Zahl: nichts, Name der Metrik oder jede Metrik aus der Liste |
 | `rateUnit` | %/s | Einheit der angezeigten Rate: %/s oder %/min |
 | `rangeScope` | Einheit | Ob sich MIN/MAX auf die gesamte Einheit oder die aktuelle Runde beziehen |
 | `avgScope` | Einheit | Dieselbe Wahl für AVG, separat |
 | `showPace` | an | Last-Zeile inklusive Entkopplungs-Flag |
 | `loadMetric` | Automatisch | Welche Last diese Zeile zeigt: automatisch (nach Sportart), Pace/Geschwindigkeit oder Leistung |
 | `recordFit` | an | SmO₂-Felder ins FIT schreiben |
+
+Die Metrik-Liste ist in allen drei Wert-Plätzen dieselbe: **SmO₂**,
+**Änderungsrate**, **THb**, **Control Index (%)** und **Control Index
+(Verhältnis)**.
 
 Fließkomma-Einstellungen sind als Ganzzahlen gespeichert (× 100 bzw. × 1000),
 weil der Connect-IQ-Einstellungseditor auf nicht allen Geräten eine verlässliche

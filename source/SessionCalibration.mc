@@ -27,9 +27,6 @@ class SessionCalibration {
     private const RELAX_RATE = 0.02;
     private const RELAX_DEADBAND = 3.0;
 
-    // A range narrower than this is not meaningful for normalisation.
-    private const MIN_RANGE = 5.0;
-
     private var _baselineSec as Number;
     private var _baselineBuf as Array<Float>;
     private var _baselineCount as Number = 0;
@@ -141,8 +138,17 @@ class SessionCalibration {
 
     //! Lap button pressed. Closes the current lap and returns its statistics,
     //! or null when the lap held no valid data.
+    //!
+    //! The two Control Index forms are the same measurement in two units: how
+    //! far the interval pulled saturation down from the level it started at.
+    //! In a step test that amplitude tracks lactate, and it is the number the
+    //! rate deliberately is not, because dividing by the duration throws it
+    //! away. It depends on the length of the step, which is a property of the
+    //! measurement and not a fault in it: compare steps of equal length.
+    //!
     //! @param onKin steepest on-transient slope seen during the lap, %/s
-    //! @return { :rate, :onKin => %/s, :min, :max, :start, :end => % }
+    //! @return { :rate, :onKin => %/s, :min, :max, :start, :end => %,
+    //!           :sciDrop => percentage points, :sciRatio => dimensionless }
     public function onLap(level as Float?, onKin as Float) as Dictionary<Symbol, Float>? {
         var result = null as Dictionary<Symbol, Float>?;
         var now = System.getTimer();
@@ -150,14 +156,20 @@ class SessionCalibration {
 
         if (_lapStart != null && level != null && lapSec > 1.0) {
             var start = _lapStart as Float;
+            var end = level as Float;
+            // A ratio needs a denominator worth dividing by; below 1 % the
+            // sensor is not reporting a level, it is reporting a fault.
+            var ratio = (start > 1.0) ? end / start : 0.0;
             // Kane's per-interval desaturation rate: (end − start) / lap time.
             result = {
-                :rate  => ((level as Float) - start) / lapSec,
-                :onKin => onKin,
-                :min   => _lapMin as Float,
-                :max   => _lapMax as Float,
-                :start => start,
-                :end   => level as Float
+                :rate     => (end - start) / lapSec,
+                :onKin    => onKin,
+                :min      => _lapMin as Float,
+                :max      => _lapMax as Float,
+                :start    => start,
+                :end      => end,
+                :sciDrop  => start - end,
+                :sciRatio => ratio
             };
         }
 
@@ -217,6 +229,11 @@ class SessionCalibration {
     public function getMin() as Float? { return _min; }
     public function getMax() as Float? { return _max; }
 
+    //! The level the current lap started at. This is the reference the live
+    //! Control Index is measured against: the lap value is only final at the
+    //! lap press, but the amplitude so far is a real number throughout.
+    public function getLapStart() as Float? { return _lapStart; }
+
     //! Extremes of the current lap only. Unlike the session range these are
     //! not relaxed back towards the middle — a lap is short enough that its
     //! true extremes stay relevant for its whole length.
@@ -225,13 +242,6 @@ class SessionCalibration {
     public function getLapIndex() as Number { return _lapIndex; }
     public function getCalibLow() as Float? { return _calibEnd; }
     public function getCalibHigh() as Float? { return _calibStart; }
-
-    //! Session SmO2 range, floored so SCI cannot explode early in a session.
-    public function getRange() as Float {
-        if (_min == null || _max == null) { return MIN_RANGE; }
-        var r = (_max as Float) - (_min as Float);
-        return (r < MIN_RANGE) ? MIN_RANGE : r;
-    }
 
     public function getSessionAverage() as Float? {
         return (_n > 0) ? _sum / _n : null;

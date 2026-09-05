@@ -177,7 +177,6 @@ def build(path: str, lap_index: int, offset: float):
         "level": k.level,
         "state": k.state,
         "slope": k.slow_slope,
-        "sci": k.sci(rng.range()),
         "prediction": k.prediction(),
         "min": rng.lo,
         "max": rng.hi,
@@ -406,6 +405,13 @@ TEXT_FONTS = ("large", "medium", "small", "xtiny")
 
 # SmO2ControlView.metricSample() / rateRowSample(). The value carries its unit
 # now, and the rate shares its row with the load.
+#
+# This is the sample for the DEFAULT metric, SmO2. The value slot is
+# configurable and some metrics are wider ("-88.8%" for the Control Index),
+# which is safe to leave out: every row's geometry is derived from the ascent
+# of the font the sample selects, so a wider sample can only pick a smaller
+# font and give every element more room. The relation is monotone, so the
+# default is the tight case for the audit.
 VALUE_SAMPLE = "88.8%"
 RATE_ROW_SAMPLE = "-8.888%/s 88.8kph"
 
@@ -854,7 +860,7 @@ def render(st: dict, out: str, device: str) -> None:
     print(f"{out}  ({sw}x{sh}, {shape}, {device})")
     print(f"  usable rect   x {ux}..{ux+uw}, y {uy}..{uy+uh}")
     print(f"  value {st['level']:.1f} %   state {LABEL[st['state']]}   "
-          f"slope {st['slope']:+.3f} %/s   SCI {st['sci']:.3f}")
+          f"slope {st['slope']:+.3f} %/s")
 
 
 def render_layout(st, out, device, layout_name):

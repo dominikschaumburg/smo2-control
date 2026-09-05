@@ -81,6 +81,12 @@ STATE_GLYPH = {
 HYSTERESIS = 0.15
 DT_MIN = 0.2
 DT_MAX = 5.0
+# Mirrors Kinetics.mc: how long a hole may be before the fit is abandoned
+# rather than continued across it, how many consecutive updates a new verdict
+# must hold before it is shown, and the length of the median prefilter.
+GAP_MAX = 8.0
+STATE_DWELL = 3
+MEDIAN_N = 3
 
 
 class SlopeWindow:
@@ -142,27 +148,76 @@ class Kinetics:
     _win: SlopeWindow = field(default_factory=SlopeWindow)
     _window_dirty: bool = False
     peak_transient: float = 0.0
+    _med: list[float] = field(default_factory=list)
+    _candidate: int = STATE_UNKNOWN
+    _candidate_n: int = 0
+    _onkin_n: int = 0
 
     def __post_init__(self):
         self._win = SlopeWindow(self.steady_window)
 
+    def _median(self, raw: float) -> float:
+        """Median of the last MEDIAN_N readings. An isolated spike is a
+        minority of three and disappears; a genuine step survives with one
+        sample of delay. Mirrors Kinetics.median()."""
+        self._med.append(raw)
+        if len(self._med) > MEDIAN_N:
+            self._med.pop(0)
+        if len(self._med) < MEDIAN_N:
+            return raw
+        return sorted(self._med)[MEDIAN_N // 2]
+
+    def _settle(self, st: int) -> int:
+        """The dwell: a change has to repeat STATE_DWELL times before it is
+        shown. Mirrors Kinetics.settle()."""
+        if st == self.state:
+            self._candidate_n = 0
+            return self.state
+        if st == self._candidate:
+            self._candidate_n += 1
+        else:
+            self._candidate, self._candidate_n = st, 1
+        if self._candidate_n >= STATE_DWELL:
+            self._candidate_n = 0
+            return st
+        return self.state
+
+    def _force(self, st: int) -> None:
+        """Set the state past the dwell, for the events the model knows about
+        rather than infers. Mirrors Kinetics.force()."""
+        self.state = st
+        self._candidate = st
+        self._candidate_n = 0
+
     def update(self, t: float, raw: float) -> None:
-        if self.level is None or (t - self._last_t) > DT_MAX:
-            # Cold start, or a gap long enough that extrapolating across it
-            # would invent a slope that never happened.
-            self.level, self.trend, self._last_t = raw, 0.0, t
-            self.state = STATE_UNKNOWN
+        value = self._median(raw)
+
+        if self.level is None:
+            self.level, self.trend, self._last_t = value, 0.0, t
+            self._force(STATE_UNKNOWN)
             self._win.clear()
-            self._win.push(raw, t)
+            self._win.push(value, t)
             return
 
         dt = t - self._last_t
         if dt < DT_MIN:
             return
 
+        if dt > DT_MAX:
+            # A hole in the data. Resync the level and drop the fast trend
+            # rather than extrapolating Holt across it, but keep the
+            # regression window unless the hole is long: the window carries
+            # its own timestamps and rescales by the real span.
+            self.level, self.trend, self._last_t = value, 0.0, t
+            if dt > GAP_MAX:
+                self._force(STATE_UNKNOWN)
+                self._win.clear()
+            self._win.push(value, t)
+            return
+
         prev = self.level
         forecast = prev + self.trend * dt
-        level = self.alpha * raw + (1.0 - self.alpha) * forecast
+        level = self.alpha * value + (1.0 - self.alpha) * forecast
         slope = (level - prev) / dt
         self.trend = self.beta * slope + (1.0 - self.beta) * self.trend
         self.level = level
@@ -176,7 +231,7 @@ class Kinetics:
         self.slow_slope = self._win.slope()
 
         if not self._win.ready():
-            self.state = STATE_ONKIN     # just restarted; we do not know yet
+            self._force(STATE_ONKIN)     # just restarted; we do not know yet
             return
 
         st = self._classify(self.slow_slope)
@@ -185,18 +240,27 @@ class Kinetics:
         # verdict about sustainability: sustainable and unsustainable intervals
         # both begin with a steep fall. Judging the fall itself as "overshoot"
         # marks every hard interval red for its first minute.
+        #
+        # On the raw classification with its own counter, not on the settled
+        # state: driving it from the settled state deadlocks at 100 % ON-KIN,
+        # because the dwell re-arms the restart for four ticks after the fall
+        # has already ended. See Kinetics.mc.
         if st == STATE_ONKIN:
             self.peak_transient = min(self.peak_transient, self.slow_slope)
-            self._window_dirty = True
-        elif self._window_dirty:
-            # The fall is over: refit from post-transient data only.
-            self._window_dirty = False
-            self._win.clear()
-            self._win.push(level, t)
-            self.state = STATE_ONKIN
-            return
+            self._onkin_n += 1
+            if self._onkin_n >= STATE_DWELL:
+                self._window_dirty = True
+        else:
+            self._onkin_n = 0
+            if self._window_dirty:
+                # The fall is over: refit from post-transient data only.
+                self._window_dirty = False
+                self._win.clear()
+                self._win.push(level, t)
+                self._force(STATE_ONKIN)
+                return
 
-        self.state = st
+        self.state = self._settle(st)
 
     def _classify(self, slope: float) -> int:
         stable, drift = self.theta_stable, self.theta_drift
@@ -240,11 +304,6 @@ class Kinetics:
         if self.level is None or self.predict_horizon <= 0:
             return None
         return min(100.0, max(0.0, self.level + self.trend * self.predict_horizon))
-
-    def sci(self, session_range: float) -> float:
-        if self.level is None or session_range < 1.0:
-            return 0.0
-        return abs(self.slow_slope) / session_range
 
 
 @dataclass
@@ -406,7 +465,7 @@ def run(samples: Iterable[tuple[float, float]], k: Kinetics, rng: SessionRange):
         k.update(t, raw)
         if k.level is not None:
             rng.update(t, k.level)
-        out.append((t, raw, k.level, k.slow_slope, k.state, k.sci(rng.range())))
+        out.append((t, raw, k.level, k.slow_slope, k.state))
     return out
 
 
@@ -457,7 +516,15 @@ def report(rows, labels: list[str] | None, k: Kinetics, rng: SessionRange) -> No
 
 
 def lap_table(rows, labels: list[str]) -> None:
-    """Kane's per-interval desaturation rate, computed the way the watch does."""
+    """The per-interval summary the watch writes to the FIT lap fields.
+
+    `drop` and `ratio` are the two forms of the Control Index: how far the
+    interval pulled saturation down from the level it started at, in
+    percentage points and as a fraction of that level. Both depend on the
+    length of the step, so compare steps of equal length; in a step test the
+    amplitude is what tracks lactate, which is exactly what `rate` throws away
+    by dividing through the duration.
+    """
     order: list[str] = []
     groups: dict[str, list] = {}
     for r, lab in zip(rows, labels):
@@ -467,8 +534,8 @@ def lap_table(rows, labels: list[str]) -> None:
         groups[lab].append(r)
 
     print("\n per-interval summary")
-    print(f"  {'lap':<8} {'dur':>5} {'start':>6} {'end':>6} {'rate':>8} "
-          f"{'onkin':>8} {'min':>6} {'max':>6}  verdict")
+    print(f"  {'lap':<8} {'dur':>5} {'start':>6} {'end':>6} {'drop':>6} "
+          f"{'ratio':>6} {'rate':>8} {'onkin':>8} {'min':>6} {'max':>6}  verdict")
     for lab in order:
         g = [r for r in groups[lab] if r[2] is not None]
         if len(g) < 5:
@@ -494,8 +561,13 @@ def lap_table(rows, labels: list[str]) -> None:
             verdict = f"drifting (steady {100 * steady:.0f}%)"
         onkin_slopes = [r[3] for r in g if r[4] == STATE_ONKIN]
         peak = min(onkin_slopes) if onkin_slopes else 0.0
-        print(f"  {lab:<8} {dur:5.0f} {start:6.1f} {end:6.1f} {rate:+8.3f} "
-              f"{peak:+8.3f} {min(vals):6.1f} {max(vals):6.1f}  {verdict}")
+        drop = start - end
+        ratio = end / start if start > 1.0 else 0.0
+        print(f"  {lab:<8} {dur:5.0f} {start:6.1f} {end:6.1f} {drop:+6.1f} "
+              f"{ratio:6.2f} {rate:+8.3f} {peak:+8.3f} "
+              f"{min(vals):6.1f} {max(vals):6.1f}  {verdict}")
+    print("  drop  = start - end, in percentage points  (FIT: lapSciDrop)")
+    print("  ratio = end / start, dimensionless         (FIT: lapSciRatio)")
     print("  rate  = (end - start) / duration, in %/s")
     print("  onkin = steepest slope during the on-transient, in %/s "
           "(tracks metabolic rate)")
