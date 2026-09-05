@@ -178,37 +178,114 @@ Ein Lap-Druck gilt ebenfalls als Lastwechsel und startet das Fenster neu.
 Die steilste erreichte Steigung des Transienten wird pro Lap festgehalten und
 ins FIT geschrieben, weil sie mit der metabolischen Rate korreliert.
 
+#### ONSET gegen echtes Absinken oberhalb der Schwelle
+
+Das ist der naheliegende Einwand gegen das ganze Verfahren: Eine Belastung
+oberhalb von LT2 schickt die Sättigung ebenfalls nach unten, was hindert das
+Feld also daran, jede solche Belastung als Transient abzutun und nie zu
+urteilen? Drei Dinge, und die Antwort verdient Präzision, denn keines davon ist
+die Intensität, die das Feld nicht sehen kann.
+
+**Die Steilheit.** Die beiden leben in verschiedenen Steigungsbändern. Ein
+On-Transient unterschreitet über 60 Sekunden gemessen 0,23 %/s; ein Absinken
+oberhalb der Schwelle liegt, sobald die erste Minute vorbei ist, in dem Bereich
+von 0,06 bis 0,30 %/s, den DRIFTING und FALLING abdecken. ONSET beginnt beim
+doppelten θ_drift, per Default 0,30 %/s, also oberhalb dessen, wo ein
+anhaltendes Absinken liegt, und unterhalb dessen, wo ein Transient liegt.
+
+**Das Signal hat einen Boden.** Ein Abfall von 0,30 %/s kann nicht lange
+anhalten. Drei Minuten durchgehalten wären das 54 Prozentpunkte, und so viel
+Luft hat kein Moxy; die Sättigung läuft gegen ihren eigenen Boden und der
+Abfall verflacht notwendig. Eine Belastung oberhalb von LT2 kann also nicht im
+ONSET-Band bleiben, und wenn sie es verlässt, startet das Fenster neu und das
+Feld beurteilt, was folgt.
+
+**Die Reihenfolge der Zustände trägt die Bedeutung.** ONSET ist kein Urteil,
+sondern die Feststellung, dass noch keines möglich ist, und lesbar wird ein
+Intervall durch das, was danach kommt. ONSET, dann HOLDING, ist eine nachhaltige
+Belastung. ONSET, dann DRIFTING oder FALLING, ohne dass ein Plateau eintritt,
+ist eine Belastung oberhalb des Punktes, an dem ein Steady State existiert.
+Diese Folge ist die Messung, nicht der anfängliche Abfall.
+
+Schlecht behandelt wird genau ein Fall: eine sehr harte Belastung, begonnen aus
+bereits niedriger Sättigung, wo der Abfall nur deshalb flach ist, weil nach
+unten kein Platz mehr ist. Die Steigung ist dann wirklich klein, und das Feld
+nennt es ein Plateau. Aufdecken lässt sich das über MIN und die eigene Skala
+des Diagramms: Ein Plateau am unteren Ende der Session-Range ist nicht dieselbe
+Aussage wie ein Plateau in ihrer Mitte, und keine Steigungsschwelle kann die
+beiden auseinanderhalten.
+
 ---
 
 ## 4. Session-interne Kalibrierung
 
-Da Absolutwerte zwischen Einheiten nicht vergleichbar sind, wird alles auf ein
-innerhalb der Einheit dynamisch kalibriertes Fenster bezogen.
+### Muss das Feld kalibriert werden? Nein
 
-**Stufe 1, Baseline.** Median der ersten 60 Sekunden gültiger Daten (Fenster
-einstellbar). Dient als Referenz-Oben. Bei langen Fenstern wird unterabgetastet,
-maximal 120 Samples werden gehalten.
+Keine Entscheidung des Feldes hängt an einem Absolutwert, und das gehört klar
+gesagt, weil damit die Frage nach dem Einrichtungsaufwand beantwortet ist:
+**keiner**. Die Zustandserkennung liest die *Steigung* der Kurve, und eine
+Steigung in %/s bedeutet dasselbe, auf welchem Niveau sie auch liegt. Damit
+fallen Sensorstelle, Fettschichtdicke, Gurtdruck und Tagesform aus dem Urteil
+heraus. Sensor anlegen, Einheit starten, und das erste Urteil kommt, sobald das
+Regressionsfenster ein Drittel seiner Länge hält, also nach etwa 20 Sekunden.
 
-**Stufe 2, rollendes Session-Min/Max.** Wird ausschließlich aus *geglätteten*
-Werten fortgeschrieben, damit ein einzelner Sensor-Spike die Range nicht
-definieren kann. Beide Extreme relaxieren mit 0,02 %/s zurück zum aktuellen
-Wert, sobald sie mehr als 3 % davon entfernt sind, so verzerrt ein einmaliger
-Ausreißer die Skalierung nicht für den Rest der Einheit.
+Innerhalb einer Einheit kalibriert wird die Skala, gegen die *berichtet* wird,
+nicht die Erkennung. Wer nie die Lap-Taste drückt und nie die Einstellungen
+öffnet, verliert nichts außer den rundenbezogenen Anzeigen.
 
-**Stufe 3, Lap-Kalibrierung.** Der erste Lap wird als Referenzintervall
-behandelt; sein Start- und Endwert verankern das Arbeitsband. Ein zweiter
-Lap-Druck innerhalb von 2 Sekunden setzt die Session-Range zurück, gedacht für
-den Fall, dass der Sensor während der Einheit umgesetzt wird.
+### Rollendes Session-Min/Max
 
-**Stufe 4, relative Schwellen.** θ_stable und θ_drift sind in %/s definiert,
-nicht als absolute SmO₂-Prozente. Raten sind zwischen Einheiten deutlich
-stabiler als Absolutwerte.
+Wird ausschließlich aus *geglätteten* Werten fortgeschrieben, damit ein
+einzelner Sensor-Spike die Range nicht definieren kann. Beide Extreme
+relaxieren mit 0,02 %/s zurück zum aktuellen Wert, sobald sie mehr als 3 %
+davon entfernt sind, so verzerrt ein einmaliger Ausreißer die Skalierung nicht
+für den Rest der Einheit.
 
-**SmO₂ Control Index (SCI).** Einheitenlose Kennzahl: Betrag der
-Regressionssteigung geteilt durch die Session-Range. Damit ist sie über Einheiten
-und Sensorpositionen hinweg vergleichbar.
+Sie speisen die MIN- und MAX-Zelle und den Session-Modus der Y-Achse. Ein
+zweiter Lap-Druck innerhalb von 2 Sekunden setzt sie zurück, und genau das ist
+zu tun, wenn der Sensor mitten in der Einheit umgesetzt wurde.
 
----
+### Rundenstatistik
+
+Die Lap-Taste schließt ein Intervall ab: sie schreibt die Lap-Felder ins FIT,
+setzt Runden-Min, -Max und -Durchschnitt zurück und markiert das Diagramm.
+Außerdem teilt sie der Klassifikation mit, dass sich die Last gerade geändert
+hat, sodass der alte Regressionsfit verworfen und nicht über die Stufe
+mitgezogen wird; siehe 3.4.
+
+Das ist die einzige manuelle Eingabe des Feldes, und sie ist optional. Ohne sie
+funktionieren die einheitsbezogenen Zahlen weiter, und die Klassifikation
+startet sich ohnehin selbst neu, sobald der On-Transient endet.
+
+### Relative Schwellen
+
+θ_stable und θ_drift sind in %/s definiert, nicht als absolute SmO₂-Prozente.
+Raten sind zwischen Einheiten deutlich stabiler als Absolutwerte, und das ist
+derselbe Grund, aus dem das Feld keine Kalibrierung braucht.
+
+### SmO₂ Control Index (SCI)
+
+Einheitenlose Kennzahl: Betrag der Regressionssteigung geteilt durch die
+Session-Range. Damit ist sie über Einheiten und Sensorpositionen hinweg
+vergleichbar. Sie wird ins FIT geschrieben, aber nicht angezeigt.
+
+### Berechnet, aber noch nicht genutzt
+
+Zwei weitere Schichten existieren in `SessionCalibration.mc` und speisen derzeit
+nichts, weder Anzeige noch FIT: die **Baseline**, ein Median der ersten 60
+Sekunden gültiger Daten, gedacht als Referenz-Oben, und der **erste Lap als
+Referenzintervall**, dessen Start- und Endwert ein Arbeitsband verankern
+sollten. Beide werden von niemandem gelesen.
+
+Sie sind die Vorarbeit für eine niveauverankerte Anzeige, und das ist ein
+anderes Feature als alles hier: Es würde die Frage „in welcher
+Intensitätsdomäne bin ich" beantworten, während der Rest des Feldes „in welche
+Richtung läuft das" beantwortet. Eine korrekte Version braucht die eigenen
+Muskeloxygenierungs-Breakpoints der Athletin oder des Athleten als
+Einstellungen, und die lassen sich aus einem Datenfeld heraus nicht messen:
+Connect IQ erlaubt einem Feld, ins FIT zu schreiben, aber nie eines zu lesen.
+Die Kalibrierung müsste also offline über eine Rampentest-Datei laufen und zwei
+Zahlen ausgeben, die man eintippt.
 
 ## 5. Anzeige
 
@@ -232,63 +309,80 @@ Drei-Feld-Layouts misst auf einer FR970 454 × 158 px, breiter als der
 Vollbildschirm einer fenix 7S, aber dort sucht niemand nach einem Verlauf.
 45 % der Höhe lässt eine Hälfte durch und schließt ein Drittel aus.
 
-#### Das Raster
+#### Zwei Blöcke und ein Diagramm
 
-Wo das Feld *der* Bildschirm ist, rahmen vier Metrikzeilen das Diagramm: das
-Zustandslabel und der Wert darüber, die Rate und die externe Last darunter. Wo
-sie sitzen, hängt von der Bildschirmform ab, und die Regel lautet: **weg von
-der bindenden Randbedingung packen**.
+Wo das Feld *der* Bildschirm ist, rahmen zwei Zahlenblöcke das Diagramm, und
+welche Zahlen sich einen Block teilen, ist die ganze Anordnung.
+
+Über dem Diagramm: der SmO₂-Wert, darunter MIN, AVG und MAX als beschriftete
+Dreierzeile. Das sind vier Messwerte derselben Größe, sie gehören also
+zusammen; der Wert allein sagt nichts darüber, wo in der heutigen Spanne er
+liegt, und die Spanne ist es, die aus der Zahl eine Aussage macht. Die
+Dreierzeile ist gleichzeitig die vertikale Legende des Diagramms, deshalb ist
+sie der Teil des Blocks, der den Plot berührt.
+
+Unter dem Diagramm: die Zustandsampel mit ihrem Namen, darunter die
+Änderungsrate und die externe Last, je an einem Ende der Zeile. Das sind
+allesamt Aussagen über die Belastung und nicht über den Wert.
+
+Ein Block antwortet auf „wie steht der Wert", der andere auf „was bedeutet
+er", und keine der beiden Fragen zwingt das Auge über den Plot. In der früheren
+Anordnung stand der Zustand oben neben dem Wert und MIN/MAX unten unter dem
+Diagramm, damit war jede Frage halbiert.
+
+Wo die Zeilen sitzen, hängt von der Bildschirmform ab, und die Regel lautet:
+**weg von der bindenden Randbedingung packen**.
 
 Auf einem **Rechteck** gibt es außer den Kanten keine Randbedingung, also
-werden die Zeilen an Ober- und Unterkante geheftet und das Diagramm bekommt
+werden die Blöcke an Ober- und Unterkante geheftet und das Diagramm bekommt
 alles dazwischen. Ein Rechteck zu dritteln war der erste Versuch und ist auf
 einem Radcomputer falsch, aus einem Grund, den ein Screenshot sofort zeigt:
 Eine Edge 1040 ist 282 × 470 px, ein Drittel also 156 px hoch, während zwei
 Textzeilen etwa 100 brauchen. Das Diagramm bekam einen 148-px-Streifen in einem
 470-px-Bildschirm, und rund 90 px am unteren Rand waren einfach schwarz. An die
-Kanten gepackt bekommt dasselbe Gerät ein 279 px hohes Diagramm.
+Kanten gepackt bekommt dasselbe Gerät ein 296 px hohes Diagramm.
 
 Auf einem **runden** Bildschirm ist die Sehne die Randbedingung, also gehen die
 Zeilen nach innen und die Kreisspitzen werden abgeschrieben. Die Höhe wird
-gedrittelt: Metriken im obersten Drittel, das Diagramm im mittleren, Metriken
-im unteren.
-
-Ein rundes Display hat in einem äußeren Drittel Platz für genau zwei Zeilen.
-Das untere Drittel trägt deshalb Rate und Last gemeinsam auf einer Zeile, je an
-einem Ende der Sehne, und darunter **zwei** Zellen statt drei. Bei drei bleiben
-der unteren Zeile 83 px Sehne pro Zelle, und die Zahlen kommen genau so groß
-heraus wie vorher in der Gutter, was der ganze Kritikpunkt war. Die Zeile der
-Rate sitzt näher an der Mitte und ist breit genug für beides.
+gedrittelt: der SmO₂-Block im obersten Drittel, das Diagramm im mittleren, der
+Zustandsblock im unteren.
 
 Gelayoutet wird dabei gegen das ganze Feld und nicht gegen das eingeschriebene
 Rechteck, und genau das ist der Punkt. Das Rechteck existiert, damit *ein* Block
 Inhalt garantiert auf dem Glas liegt. Eine einzelne Textzeile braucht nur die
 Sehne auf ihrer eigenen Höhe, und in der Nähe der Mitte eines runden Displays
-ist diese Sehne die volle Breite. Zeilenweise zu rechnen ist der Grund, warum
-der Wert auf einer FR970 72 px hoch sein darf und nicht 78 px neben ein Label
-gequetscht, und es setzt das Diagramm in den breitesten Teil der Anzeige statt
-davon eingerückt.
+ist diese Sehne die volle Breite. Zeilenweise zu rechnen ist überhaupt der
+Grund, warum vier Zeilen Platz haben, und es setzt das Diagramm in den
+breitesten Teil der Anzeige statt davon eingerückt: 396 px Sehne auf einer
+FR970 gegen die 350 px, die das eingeschriebene Rechteck hergibt.
 
 Zwei Zeilen pro äußerem Drittel, gepackt an den **inneren** Rand und von dort
-nach außen wachsend: das Zustandslabel über dem Wert oben, die Rate über der
-externen Last unten. Jedes Drittel vom äußeren Rand her zu füllen war der erste
+nach außen wachsend. Jedes Drittel vom äußeren Rand her zu füllen war der erste
 Versuch und scheitert auf einem runden Display aus einem Grund, der sofort
 einleuchtet: Bei y = 4 auf einem 454-px-Kreis ist das Glas 73 px breit, dort
-passt kein einziges Wort hin. Nach innen zu packen setzt außerdem das größte
-Element am nächsten an die Mitte, wo die Sehne am breitesten ist, die beiden
-Randbedingungen ziehen also in dieselbe Richtung.
+passt kein einziges Wort hin.
 
-Die zwei Zeilen eines Drittels werden **als Paar** dimensioniert, größte
-Variante zuerst, und die erste passende Kombination gewinnt. Einzeln
-nacheinander funktioniert es nicht: Der Wert nimmt sich die größte Schrift, die
-er bekommen kann, und schiebt sein Label damit in die Kreisspitze. Auf einer
-FR970 lässt ein 97 px hoher Wert dem Label eine Sehne von 167 px, während
-„DRIFTING" plus Ampel 180 braucht. Eine Schriftstufe beim Wert aufzugeben
-bringt dem Label zwei, und dieser Tausch ist für eine gierige Suche unsichtbar.
+Nach innen zu packen setzt außerdem die *breiteste* Zeile am nächsten an die
+Mitte, wo die Sehne am breitesten ist, die beiden Randbedingungen ziehen also
+in dieselbe Richtung. Das entscheidet die Reihenfolge innerhalb jedes Drittels.
+Im obersten Drittel ist die Dreierzeile breiter als die einzelne Zahl, also
+steht sie am Diagramm und der Wert darüber: umgekehrt kostet es den Wert auf
+einer FR970 eine Schriftstufe, 48 px gegen 56 px. Im unteren Drittel bekommen
+Ampel und Name die innere Zeile, weil das das eine Element ist, das einen
+flüchtigen Blick überleben muss.
 
-Die Rate ist auf drei Viertel der Werthöhe gedeckelt, nicht auf das Drittel.
-Ihre Zeichenkette ist dreimal so lang, bei gleicher Höhe braucht sie also
-dreimal so viel Farbe und liest sich als Schlagzeile. Die Schlagzeile ist SmO₂.
+Die Dreierzeile nimmt die kürzeste Zeile, die sie halten kann, also zweimal die
+Beschriftungsschrift: Das oberste Drittel ist der knappste Platz im Feld, und
+jedes Pixel, das sie nicht nimmt, ist ein Pixel Wert. Auf einem Rechteck, wo
+keine Sehne dagegensteht, dürfen ihre Zahlen auf die halbe Werthöhe wachsen.
+
+Zwei Deckel halten die Hierarchie gerade, und beide waren nötig: ohne sie
+kamen die Hilfszahlen größer heraus als der Wert, den sie stützen. Die Rate ist
+auf drei Viertel des Zustandslabels gedeckelt, weil ihre Zeichenkette dreimal
+so lang ist und bei gleicher Höhe dreimal so viel Farbe braucht. Das
+Zustandslabel ist auf die Höhe des Wertes gedeckelt, sonst lassen ein schmaler
+Wert und eine breite untere Sehne ein Wort aus acht Buchstaben größer setzen
+als die Zahl, die es qualifiziert.
 
 Die Höhendeckel des rechteckigen Layouts sind Bruchteile des Feldes und nicht
 eines Drittels, damit ein hoher Bildschirm keine absurd große Schrift erzeugt.
@@ -300,28 +394,29 @@ Alles, was kleiner ist als der ganze Bildschirm, fällt auf eine Kopf- und eine
 Fußzeile im nutzbaren Rechteck zurück: Wert neben Zustand, Rate neben Last, und
 dazwischen die Range als `41-71`, wo die beiden Platz dafür lassen. Letzteres
 ist keine Dekoration: Ohne sie hat ein kurzes Diagramm überhaupt keine
-vertikale Skala.
+vertikale Skala. Für den Mittelwert ist in diesem Layout kein Platz, er
+entfällt dort.
 
 #### Was darin steht
 
-- **Wert**: der SmO₂-Wert in der Zustandsfarbe, in der Zeile darüber die
-  **farbige Zustandsampel** und ihr Label, dieselbe Scheibe, die die
-  diagrammlosen Stufen zeigen, damit über alle Feldgrößen hinweg eine visuelle
-  Sprache gilt
+- **Wert**: der SmO₂-Wert in der Zustandsfarbe, mit einem Prozentzeichen
+  dahinter. Das Zeichen ist keine Dekoration: dasselbe Feld zeigt eine Rate in
+  %/s und ein THb in g/dl, und ein nacktes 58,4 daneben ist eine Sache mehr,
+  die man sich merken statt lesen muss.
+- **Zellenraster** unter dem Wert, jede Zelle eine kleine graue Beschriftung
+  über der Zahl: **MIN**, **AVG**, **MAX**, in der Reihenfolge, in der eine
+  Skala läuft. MIN und MAX standen früher woanders: sie steckten in einer aus
+  dem linken Diagrammrand geschnittenen Gutter, in der Achsenschrift. Damit
+  waren die zwei Zahlen, an denen das ganze Diagramm gemessen wird, der
+  kleinste Text im Feld, auf einer Edge 11 px, und sie kosteten den Plot ein
+  Fünftel seiner Breite. Im Raster sind sie so groß wie jede andere Metrik, und
+  der Plot bekommt seine volle Breite zurück.
 - **Diagramm**: der Verlauf über das Diagrammfenster (Default 90 s), jedes
   Segment in der Farbe seines Zustands, und die **Fläche darunter gefüllt** in
   einer abgedunkelten Variante derselben Farbe. Eine dünne Linie muss man
   suchen, eine gefüllte Fläche sieht man einfach.
 - **Gitterlinien** oben, in der Mitte und unten. Keine Beschriftung im Plot:
-  die Grenzwerte sind Zellen im Raster darunter.
-- **Zellenraster** unter dem Diagramm, jede Zelle eine kleine graue
-  Beschriftung über der Zahl: **MIN** und **MAX**, dazu **PACE**, wo eine
-  Spalte dafür ist. Dort standen die Grenzwerte früher nicht: sie steckten in
-  einer aus dem linken Diagrammrand geschnittenen Gutter, in der Achsenschrift.
-  Damit waren die zwei Zahlen, an denen das ganze Diagramm gemessen wird, der
-  kleinste Text im Feld, auf einer Edge 11 px, und sie kosteten den Plot ein
-  Fünftel seiner Breite. Im Raster sind sie so groß wie jede andere Metrik, und
-  der Plot bekommt seine volle Breite zurück.
+  die Grenzwerte sind Zellen im Raster darüber.
 - **Lap-Marker** als vertikale Linien
 - **Prognose-Nadel**: ein Dreieck am rechten Rand, das auf die Höhe zeigt, auf
   die der Trend zuläuft, in der Zustandsfarbe. Es liest sich wie ein Zeiger auf
@@ -329,11 +424,15 @@ vertikale Skala.
   Skala, die sagt, wohin der Wert läuft, und kein eigener Messpunkt. Es ersetzt
   einen kleinen grauen Punkt, der mitten im Verlauf saß und wie ein verirrter
   Messwert wirkte.
-- **Rate** in der Zustandsfarbe, darunter die **externe Last**. Bei Entkopplung
-  wird die Last rot und bekommt `DEC` angehängt; die Zeile wird einmal für die
-  breiteste Zeichenkette dimensioniert, die sie je hält, und das Wort
-  auszuschreiben würde die Pace zwei Schriftstufen kosten für ein Flag, das die
-  Farbe schon trägt.
+- **Zustandsampel und Label** unter dem Diagramm, mittig. Es ist dieselbe
+  Scheibe, die die diagrammlosen Stufen zeigen, damit über alle Feldgrößen
+  hinweg eine visuelle Sprache gilt.
+- **Rate** in der Zustandsfarbe und die **externe Last**, gemeinsam auf der
+  untersten Zeile, je an einem Ende. Bei Entkopplung wird die Last rot und
+  bekommt `DEC` angehängt; die Zeile wird einmal für die breiteste
+  Zeichenkette dimensioniert, die sie je hält, und das Wort auszuschreiben
+  würde die Last zwei Schriftstufen kosten für ein Flag, das die Farbe schon
+  trägt.
 
 SCI wird nicht angezeigt. Die Kennzahl ist einheitenlos und in Bewegung schwer
 zu lesen, und die Rate sagt dasselbe in handlungsfähigen Einheiten. Ins FIT
@@ -399,6 +498,18 @@ Scheibe gezeichnet; daraus entstehen die runden Enden und Ecken. Die
 zweiteiligen Symbole werden etwas kleiner und dünner gezeichnet als die
 einteiligen, sonst läuft das obere Element durch den Rand des Kreises hinaus.
 
+Ob das auf dem Glas tatsächlich rund aussieht, entscheiden zwei Details, und
+beide waren zuerst falsch. Der Radius der Endscheibe muss aufgerundet werden
+und nicht abgeschnitten: Ein Stift der Breite w deckt w/2 zu jeder Seite der
+Linie ab, und eine abrundende Integerdivision begräbt die Scheibe in genau dem
+Strich, den sie abschließen soll. Das sind die eckigen Spitzen, die die Symbole
+bei den kleinen Größen hatten, wo w 2 oder 3 Pixel ist. Und der Rasterer muss
+angewiesen werden, zu kantenglätten, sonst werden eine 12-px-Scheibe und ein
+diagonales Chevron als Treppenstufen gezeichnet und es gibt nichts abzurunden.
+Das passiert nur rund um die Ampel und nicht im ganzen Feld, weil die
+Flächenfüllung des Diagramms darauf beruht, dass benachbarte Formen eine harte
+Kante teilen.
+
 Unter einem Radius von 7 px ist kein Platz für ein Symbol, dann trägt die
 Scheibe die Bedeutung allein.
 
@@ -411,10 +522,28 @@ Farbenblind-Einstellung versteckt.
 
 ## 6. Pace-/Power-Kopplung und Entkopplungserkennung
 
-Ist die Anzeige aktiviert, zeigt das Feld die externe Last, gewählt nach
-Sportart: **Power in Watt auf dem Rad, Pace überall sonst**. Laufen nach Watt
-ist Geschmackssache und die Laufleistung einer Uhr ist verrauscht, deshalb ist
-Pace der Default beim Laufen. Die Pace folgt den Einheiten der Uhr.
+Ist die Anzeige aktiviert, zeigt das Feld die externe Last. Standardmäßig
+gewählt nach Sportart, und auf dem Rad sekündlich statt einmal pro Einheit:
+
+- **Rad mit sendendem Leistungsmesser**: Power in Watt, `245W`
+- **Rad ohne**: Geschwindigkeit, `32.4kph` beziehungsweise `20.1mph`
+- **alles andere**: Pace, `4:35`
+
+Watt sind auf dem Rad das ehrliche Maß der Arbeit, aber nur solange ein
+Leistungsmesser sie liefert, und wer mitten in der Ausfahrt seinen Messer
+verliert, soll die Geschwindigkeit zurückbekommen und keinen Strich.
+Geschwindigkeit und nicht Pace, weil niemand nach Minuten pro Kilometer
+Rad fährt. Laufen nach Watt ist Geschmackssache und die Laufleistung einer Uhr
+ist verrauscht, deshalb ist Pace der Default beim Laufen. Alles folgt den
+Einheiten der Uhr.
+
+Die Last trägt ihre Einheit, wo die Pace keine braucht: `32.4` neben einer Rate
+in %/s ist nicht selbsterklärend, `4:35` und `245W` schon.
+
+Mit der Einstellung **Angezeigte Last** lässt sich die Wahl erzwingen, auf
+Pace/Geschwindigkeit oder auf Leistung. Erzwungene Leistung gilt auch ohne
+sendenden Messer und liest dann `--W`: Eine Lücke da, wo eine Zahl verlangt
+wurde, ist auch eine Information.
 
 Der informative Moment ist die **Entkopplung**. Über ein 30-Sekunden-Fenster
 wird der Variationskoeffizient der Last berechnet. Liegt er unter 4 %, die
@@ -484,9 +613,10 @@ ANT-Takt sauber vom Render-Takt entkoppelt.
 | `lapOnKinRate`, steilste Steigung des On-Transienten | %/s |
 | `lapSmo2Min`, `lapSmo2Max` | % |
 
-**Session-Feld:** `avgSmo2`, Durchschnitt über die Einheit. Der Durchschnitt
-läuft nur bei laufendem Timer weiter; zehn Minuten Stehen mit angelegtem Sensor
-verfälschen ihn nicht.
+**Session-Feld:** `avgSmo2`, Durchschnitt über die Einheit. Durchschnitte
+laufen nur bei laufendem Timer weiter; zehn Minuten Stehen mit angelegtem
+Sensor verfälschen sie nicht. Das gilt genauso für den Rundendurchschnitt
+hinter der AVG-Zelle, den die Lap-Taste zurücksetzt.
 
 `setData()` wird nur bei tatsächlicher Wertänderung aufgerufen, damit Smart
 Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
@@ -505,7 +635,7 @@ Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
 | `thetaStable1000` | 60 | θ_stable × 1000, Grenze Plateau/Abfall |
 | `thetaDrift1000` | 150 | θ_drift × 1000, Grenze kontrolliert/überzogen |
 | `chartWindowSec` | 90 | Zeitfenster der Sparkline |
-| `yAxisMode` | Auto | Auto (letzte Minuten) / Session-Range / fest 20 bis 80 % / fest 0 bis 100 % |
+| `yAxisMode` | Auto | Auto (letzte Minuten) / Session-Range / fest 20 bis 80 % / fest 0 bis 100 % / Runden-Range |
 | `baselineSec` | 60 | Länge der Baseline-Erfassung |
 | `colorBlind` | aus | Farbenblind-Palette |
 | `stateIcons` | an | Symbol in der Zustandsampel, damit das Urteil nicht allein an der Farbe hängt |
@@ -513,8 +643,10 @@ Recording die Datei nicht unnötig aufbläht. Die Aufzeichnung ist abschaltbar.
 | `smallMetric` | SmO₂ | Was die diagrammlosen Stufen neben der Ampel zeigen: SmO₂, Änderungsrate, THb oder Control-Index |
 | `smallSecond` | Rate | Zweite Zeile unter dieser Zahl: nichts, Name der Metrik oder Änderungsrate |
 | `rateUnit` | %/s | Einheit der angezeigten Rate: %/s oder %/min |
-| `rangeScope` | Einheit | Ob sich MIN/MAX und der Session-Modus der Y-Achse auf die gesamte Einheit oder die aktuelle Runde beziehen |
-| `showPace` | an | Pace-/Power-Zeile inklusive Entkopplungs-Flag |
+| `rangeScope` | Einheit | Ob sich MIN/MAX auf die gesamte Einheit oder die aktuelle Runde beziehen |
+| `avgScope` | Einheit | Dieselbe Wahl für AVG, separat |
+| `showPace` | an | Last-Zeile inklusive Entkopplungs-Flag |
+| `loadMetric` | Automatisch | Welche Last diese Zeile zeigt: automatisch (nach Sportart), Pace/Geschwindigkeit oder Leistung |
 | `recordFit` | an | SmO₂-Felder ins FIT schreiben |
 
 Fließkomma-Einstellungen sind als Ganzzahlen gespeichert (× 100 bzw. × 1000),
@@ -532,9 +664,125 @@ sein eigenes Rauschen das Diagramm füllt und nach wildem Auf und Ab aussieht,
 das genaue Gegenteil der Aussage, für die es das Feld gibt. Über fünf Einheiten
 gemessen umfasst ein 90-s-Fenster im Plateau typisch 4,8 Punkte und im
 On-Transienten 22,5, ein Boden von 25 hält ein Plateau also bei etwa einem
-Fünftel der Höhe, während eine echte Desaturierung das Bild füllt. Alternative
-ist **Session-Range**: eine Skala, die sich nie bewegt, um den Preis, dass der
-Verlauf oft nur einen kleinen Teil des Diagramms nutzt.
+Fünftel der Höhe, während eine echte Desaturierung das Bild füllt.
+Alternativen sind **Session-Range** und **Runden-Range**: eine Skala, die sich
+innerhalb ihres Fensters nicht bewegt, um den Preis, dass der Verlauf oft nur
+einen kleinen Teil des Diagramms nutzt. Die gesamte Einheit antwortet auf „wo
+liegt das in meiner heutigen Spanne", die Runde auf „was hat dieses Intervall
+gemacht", und welcher Rahmen nützlich ist, hängt daran, ob die Ausfahrt
+strukturiert ist.
+
+Der Achsenmodus benennt sein eigenes Fenster, er ist also unabhängig davon,
+worauf sich MIN und MAX beziehen. Session-Range auf der Achse neben MIN/MAX der
+Runde ist eine sinnvolle Kombination: eine feste Skala zum Vergleichen der
+Intervalle, mit den Zahlen des Intervalls, in dem man steckt.
+
+### Welche Einstellungen das Urteil ändern, und wie stark
+
+Das meiste in der Liste oben ist Anzeigegeschmack. Nur fünf Einstellungen
+berühren die Zustandserkennung überhaupt, und zwei davon ändern nur die Zahl,
+die man liest, nicht die Farbe. Geändert werden muss nichts: die Defaults sind
+die gemessenen Werte, und dieser Abschnitt ist für den Fall, dass die Farben
+dem widersprechen, was die Beine sagen.
+
+#### Das Plateau-Band: thetaStable1000
+
+Das ist die halbe Breite von HOLDING. Alles, was langsamer als diese Rate
+fällt oder steigt, ist ein Plateau; steiler abwärts ist DRIFTING.
+
+Eine Rate in %/s kann man nicht fühlen, also gelesen als Prozent pro Minute.
+Genau an der Grenze erlaubt „flach" das:
+
+| Einstellung | %/s | %/min | Drift über ein 4-Minuten-Intervall |
+|---|---|---|---|
+| 40 | 0,040 | 2,4 | 9,6 Punkte |
+| **60 (Default)** | **0,060** | **3,6** | **14,4 Punkte** |
+| 80 | 0,080 | 4,8 | 19,2 Punkte |
+| 100 | 0,100 | 6,0 | 24 Punkte |
+
+Das sind Worst Cases an der Grenze und nicht das, was ein Plateau normalerweise
+tut: Die mittleren 80 % der gemessenen Plateau-Steigungen liegen innerhalb von
+±0,06 %/s, und deshalb ist 60 der Default. Aber die Tabelle ist die ehrliche
+Lesart der Einstellung. Sie sagt: Beim Default darf ein vierminütiges Intervall
+14 Punkte Sättigung verlieren und gilt trotzdem als flach.
+
+- **Erhöhen** (80, 100), wenn das Feld DRIFTING zeigt, obwohl man die Belastung
+  sicher über die Einheit halten kann. Mehr Grün, später Gelb.
+- **Senken** (40, 50), wenn HOLDING in Belastungen auftaucht, die man
+  tatsächlich nicht halten kann. Früher Gelb, und ein echtes Plateau flackert
+  gelegentlich mit.
+
+#### Das Abfall-Band: thetaDrift1000
+
+Die Grenze zwischen DRIFTING und FALLING, und sie hat eine Doppelrolle: Die
+ONSET-Schwelle ist der doppelte Wert, denn ein Transient ist nichts anderes als
+ein sehr steiler Abfall.
+
+| Einstellung | FALLING steiler als | ONSET steiler als |
+|---|---|---|
+| 100 | 0,100 %/s, 6 %/min | 0,200 %/s, 12 %/min |
+| **150 (Default)** | **0,150 %/s, 9 %/min** | **0,300 %/s, 18 %/min** |
+| 200 | 0,200 %/s, 12 %/min | 0,400 %/s, 24 %/min |
+
+- **Erhöhen**, wenn harte Intervalle länger als etwa die erste Minute auf ONSET
+  stehen. Eine höhere Schwelle lässt das Feld den Abfall früher für beendet
+  erklären, und damit beginnt die Plateau-Frage.
+- **Senken**, wenn das Feld selbst in Belastungen, die klar davonlaufen, nie
+  FALLING erreicht.
+
+Die Richtung des ONSET-Effekts ist zu beachten, sie ist das Gegenteil dessen,
+was der Name nahelegt: Eine *niedrigere* Drift-Schwelle lässt ONSET schon bei
+sanfteren Abfällen greifen, ein hartes Intervall verbringt also *mehr* Zeit in
+ONSET und weniger Zeit im Urteil.
+
+#### Das Lineal: steadyWindowSec
+
+Über wie viel Vergangenheit jedes Urteil gemessen wird.
+
+| Einstellung | Wirkung |
+|---|---|
+| 45 | Reagiert früher, aber das gemessene Plateau-Band weitet sich auf ±0,08 %/s, echte Drift versteckt sich darin |
+| **60 (Default)** | Das gemessene Optimum über fünf Schwellen-Einheiten |
+| 90 | Der On-Transient verdünnt sich in die vorausgehende Erholung und wird nicht mehr erkannt |
+
+Zwei Folgen, die unabhängig von der Einstellung gelten. Das Urteil beschreibt
+die *Mitte* seines Fensters, bei 60 s ist die aktuelle Farbe also eine Aussage
+über den Zustand vor 30 Sekunden; das Diagramm korrigiert das, indem es jedes
+vergangene Segment aus einem darauf zentrierten Fenster einfärbt, und deshalb
+können Verlauf und Ampel am rechten Rand auseinandergehen. Und nach jedem
+Neustart braucht das Feld ein Drittel des Fensters, beim Default 20 Sekunden,
+bevor es etwas anderes als ONSET sagt.
+
+#### Die zwei, die nur die Zahl ändern: smoothingAlpha100, smoothingBeta100
+
+- **α, Default 30.** Wie viel von jedem neuen Sensorwert in den angezeigten
+  Wert einfließt. 15 ist ruhiger und später, 60 folgt dem Sensor eng und springt
+  mit ihm. Die Farben bewegt das kaum, denn die Klassifikation ist eine
+  Regression über eine ganze Minute dieser Werte, und das Mitteln wäscht den
+  Unterschied heraus. Den angezeigten Wert bewegt es schon, und MIN, AVG und
+  MAX mit ihm.
+- **β, Default 15.** Wie schnell der schnelle Trend neu ausrichtet. Das speist
+  ausschließlich die Prognose-Nadel. Höher, und die Nadel pendelt; niedriger,
+  und sie hinkt einer echten Wende nach.
+
+`predictHorizon` (Default 15 s) ist die Reichweite dieser Nadel, 0 schaltet sie
+ab. `baselineSec` sammelt den Baseline-Median, den derzeit niemand liest; siehe
+Abschnitt 4.
+
+#### Vier Symptome und was zu versuchen ist
+
+| Was man sieht | Was zu ändern ist |
+|---|---|
+| DRIFTING im ruhigen Grundlagenbereich | `thetaStable1000` hoch auf 80 oder 100 |
+| HOLDING in Intervallen, die man abbrechen muss | `thetaStable1000` runter auf 40 oder 50 |
+| ONSET zwei Minuten lang in jedem Intervall | `thetaDrift1000` hoch auf 200 |
+| Die Farbe dreht deutlich nach dem gefühlten Wechsel | `steadyWindowSec` runter auf 45, mit weiterem Plateau-Band als Preis |
+
+Immer nur eine Sache ändern, und gegen eine aufgezeichnete Einheit prüfen statt
+gegen ein Gefühl: `tools/kinetics_replay.py` rechnet dasselbe Modell über die
+eigenen `.fit`-Dateien und gibt ein Urteil pro Intervall aus, man sieht also,
+was eine Schwelle mit einem Training gemacht hat, dessen Antwort man schon
+kennt.
 
 ---
 

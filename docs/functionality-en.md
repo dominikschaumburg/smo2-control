@@ -168,36 +168,106 @@ A lap press also counts as a load change and restarts the window.
 The steepest slope reached during the transient is captured per lap and written
 to the FIT file, because it correlates with metabolic rate.
 
+#### ONSET against a genuine decline above threshold
+
+This is the obvious objection to the whole scheme: an effort above LT2 also
+sends saturation down, so what stops the field calling every such effort a
+transient and never judging it? Three things, and the answer is worth being
+precise about because none of them is intensity, which the field cannot see.
+
+**Steepness.** The two live in different slope bands. An on-transient runs past
+0.23 %/s measured over 60 seconds; a decline above threshold, once the first
+minute is done, sits in the 0.06 to 0.30 %/s range that DRIFTING and FALLING
+cover. ONSET starts at twice θ_drift, 0.30 %/s by default, which is above where
+a sustained decline lives and below where a transient does.
+
+**The signal has a floor.** A fall of 0.30 %/s cannot continue for long. Held
+for three minutes it would be 54 percentage points, and no Moxy has that much
+room; saturation approaches its own floor and the fall necessarily flattens.
+So an effort above LT2 cannot stay in the ONSET band, and when it leaves it the
+window restarts and the field judges what follows.
+
+**The order of states carries the meaning.** ONSET is not a verdict, it is a
+statement that no verdict is possible yet, and what makes an interval readable
+is what comes after it. ONSET followed by HOLDING is a sustainable effort.
+ONSET followed by DRIFTING or FALLING, with no plateau arriving, is an effort
+above the point where a steady state exists. That sequence, not the initial
+fall, is the measurement.
+
+The one case this handles badly is a very hard effort started from an already
+low saturation, where the fall is shallow only because there is nowhere left to
+fall to. The slope is then genuinely small and the field will call it a
+plateau. MIN and the chart's own scale are what expose it: a plateau at the
+bottom of the session range is not the same reading as a plateau in the middle
+of it, and no slope threshold can tell them apart.
+
 ---
 
 ## 4. Session-internal calibration
 
-Since absolute values are not comparable between sessions, everything is
-referenced to a window calibrated live within the session.
+### Does the field need calibrating? No
 
-**Stage 1, baseline.** Median of the first 60 seconds of valid data (window
-configurable), serving as the "reference top". Long windows are sub-sampled; at
-most 120 samples are held.
+Nothing the field decides depends on an absolute value, and that is worth
+stating plainly because it settles how much setting up there is: **none**. The
+state detection reads the *slope* of the curve, and a slope in %/s means the
+same thing whatever level it sits on, so sensor site, adipose thickness, strap
+pressure and day form drop out of the verdict. Put the sensor on, start the
+activity, and the first verdict arrives once the regression window holds a
+third of its length, about 20 seconds.
 
-**Stage 2, rolling session min/max.** Advanced from *smoothed* values only, so
-a single sensor spike cannot define the range. Both extremes relax back toward
-the current value at 0.02 %/s once they are more than 3 % away from it, so one
-outlier does not distort the scaling for the rest of the session.
+What is calibrated within a session is the scale things are *reported* against,
+not the detection. If you never press lap and never open the settings, you lose
+nothing but the lap-scoped readouts.
 
-**Stage 3, lap calibration.** The first lap is treated as a reference interval;
-its start and end values anchor the working band. A second lap press within
-2 seconds resets the session range, intended for re-seating the sensor
-mid-session.
+### Rolling session min/max
 
-**Stage 4, relative thresholds.** θ_stable and θ_drift are defined in %/s, not
-as absolute SmO₂ percentages. Rates are considerably more stable between
-sessions than absolute values.
+Advanced from *smoothed* values only, so a single sensor spike cannot define
+the range. Both extremes relax back toward the current value at 0.02 %/s once
+they are more than 3 % away from it, so one outlier does not distort the
+scaling for the rest of the session.
 
-**SmO₂ Control Index (SCI).** A dimensionless figure: the magnitude of the
-regression slope divided by the session range, which makes it comparable across
-sessions and sensor placements.
+They feed the MIN and MAX cells and the session y-axis mode. A second lap
+press within 2 seconds resets them, which is what to do after re-seating the
+sensor mid-session.
 
----
+### Lap statistics
+
+The lap button closes an interval: it writes the lap FIT fields, resets the lap
+min, max and average, and marks the chart. It also tells the classifier that
+the load just changed, so the old regression fit is discarded rather than
+carried across the step; see 3.4.
+
+That is the only manual input the field has, and it is optional. Without it the
+session-scoped numbers still work and the classifier still restarts itself
+whenever the on-transient ends.
+
+### Relative thresholds
+
+θ_stable and θ_drift are defined in %/s, not as absolute SmO₂ percentages.
+Rates are considerably more stable between sessions than absolute values, which
+is the same reason the field needs no calibration.
+
+### SmO₂ Control Index (SCI)
+
+A dimensionless figure: the magnitude of the regression slope divided by the
+session range, which makes it comparable across sessions and sensor
+placements. Written to the FIT, not displayed.
+
+### Computed but not yet used
+
+Two further layers exist in `SessionCalibration.mc` and currently feed nothing,
+neither the display nor the FIT: the **baseline**, a median of the first 60
+seconds of valid data intended as a "reference top", and the **first lap as a
+reference interval**, whose start and end values were meant to anchor a working
+band. Nothing reads either of them.
+
+They are the groundwork for a level-anchored readout, which is a different
+feature from anything here: it would answer "which intensity domain is this",
+where the rest of the field answers "which direction is this going". A correct
+version needs the athlete's own muscle-oxygenation breakpoints as settings, and
+those cannot be measured from inside a data field, because Connect IQ lets a
+field write FIT but never read one back. So the calibration would have to run
+offline over a ramp-test file and print two numbers to type in.
 
 ## 5. Display
 
@@ -219,60 +289,77 @@ Size alone is the wrong test. The middle strip of a three-up layout is
 where anyone goes looking for a trend. 45 % of the height clears a half and
 excludes a third.
 
-#### The grid
+#### Two blocks and a chart
 
-Where the field *is* the screen, four metric rows frame the chart: the state
-label and the value above it, the rate and the external load below it. Where
-they sit depends on the screen shape, and the rule is to **pack away from
-whatever the binding constraint is**.
+Where the field *is* the screen, the chart is framed by two blocks of numbers,
+and which numbers share a block is the whole of the arrangement.
 
-On a **rectangle** there is no constraint but the edges, so the rows are pinned
-to the top and bottom and the chart takes everything between. Splitting a
-rectangle into thirds was the first attempt and is wrong on a bike computer for
-a reason that is plain in a screenshot: an Edge 1040 is 282 × 470 px, so a
+Above the chart: the SmO₂ reading, and under it MIN, AVG and MAX as a labelled
+three-cell row. Those are four readings of the same quantity, so they belong
+together; the level on its own says nothing about where in today's range it
+sits, and the range is what turns the number into a reading. The trio doubles
+as the chart's vertical legend, which is why it is the part of the block that
+touches the plot.
+
+Below the chart: the state light with its name, and under that the rate of
+change and the external load, one against each end of the row. Those are all
+statements about the effort rather than about the level.
+
+One block answers "what is the reading", the other "what does it mean", and
+neither question makes the eye cross the plot to finish it. The earlier
+arrangement had the state beside the value at the top and MIN/MAX under the
+chart at the bottom, so both questions were split in half.
+
+Where the rows sit depends on the screen shape, and the rule is to **pack away
+from whatever the binding constraint is**.
+
+On a **rectangle** there is no constraint but the edges, so the blocks are
+pinned to the top and bottom and the chart takes everything between. Splitting
+a rectangle into thirds was the first attempt and is wrong on a bike computer
+for a reason that is plain in a screenshot: an Edge 1040 is 282 × 470 px, so a
 third is 156 px tall while two rows of text need about 100. The chart got a
 148 px band in a 470 px screen and roughly 90 px at the bottom was simply
-black. Packing to the edges gives the same device a 279 px chart.
+black. Packing to the edges gives the same device a 296 px chart.
 
 On a **round** screen the constraint is the chord, so the rows go inwards and
-the tips of the circle are written off. The height is divided into three:
-metrics in the top third, the chart in the middle third, metrics in the bottom
-third.
-
-A round screen has room for exactly two rows in an outer third, so the bottom
-third is the rate and the load sharing one row against each end of the chord,
-with **two** cells below them rather than three. At three the bottom row is
-83 px of chord per cell and the numbers come out the size they were in the
-gutter, which was the whole complaint. The rate's row sits nearer the middle
-and is wide enough for two things.
+the tips of the circle are written off. The height is divided into three: the
+SmO₂ block in the top third, the chart in the middle third, the verdict block
+in the bottom third.
 
 This lays out against the whole field rather than against the inscribed
 rectangle, and that is the point. The rectangle exists so that one block of
 content is guaranteed to be on the glass. A single row of text needs only the
 chord at its own height, and near the middle of a round screen that chord is
-the full width. Working row by row is what lets the value be 72 px tall on an
-FR970 rather than 78 px squeezed beside a label, and it puts the chart in the
-widest part of the display instead of inset from it.
+the full width. Working row by row is what makes room for four rows at all,
+and it puts the chart in the widest part of the display instead of inset from
+it: 396 px of chord on an FR970 against the 350 px the inscribed rectangle
+offers.
 
 Two rows per outer third, packed against the **inner** edge and growing
-outwards: the state label above the value at the top, the rate above the
-external load at the bottom. Filling each third from its outer edge was tried
-first and fails on a round screen for a reason that is obvious once seen: at
-y = 4 on a 454 px circle the glass is 73 px wide, so whichever row got the top
-of the top third could not hold a single word. Packing inwards also puts the
-largest element nearest the middle, where the chord is widest, so the two
-constraints agree.
+outwards. Filling each third from its outer edge was tried first and fails on
+a round screen for a reason that is obvious once seen: at y = 4 on a 454 px
+circle the glass is 73 px wide, so whichever row got the top of the top third
+could not hold a single word.
 
-The two rows of a third are sized **as a pair**, largest first, and the first
-combination that fits wins. Sizing them one at a time does not work: the value
-takes the largest font it can, which pushes its label into the tip of the
-circle, and on an FR970 a 97 px value leaves the label a 167 px chord where
-"DRIFTING" plus a light needs 180. Giving up one font step on the value buys
-the label two, which is the better trade and not one a greedy search can find.
+Packing inwards also puts the *widest* row nearest the middle, where the chord
+is widest, so the two constraints agree. That decides the order inside each
+third. In the top third the three-cell trio is wider than the single number,
+so the trio is the one against the chart and the value sits above it: the
+other way round costs the value a font step on an FR970, 48 px against 56 px.
+In the bottom third the state light and its name get the inner row, because
+that is the one element which has to survive a glance.
 
-The rate is capped at three quarters of the value's height rather than at the
-band. Its string is three times as long, so at equal heights it takes three
-times the ink and reads as the headline. SmO₂ is the headline.
+The trio takes the shortest row that can hold it, the caption font twice over,
+because the top third is the scarcest space in the field and every pixel it
+does not take is a pixel of value. On a rectangle, where there is no chord to
+fight, its numbers may grow to half the value's height.
+
+Two caps keep the hierarchy right, and both were needed: without them the
+supporting numbers came out larger than the reading they support. The rate is
+capped at three quarters of the state label, because its string is three times
+as long and at equal heights it takes three times the ink. The state label is
+capped at the value's own height, or a narrow value and a wide bottom chord
+let an eight-letter word be set larger than the number it qualifies.
 
 Height caps on the rectangular layout are fractions of the field rather than
 of a band, so a tall screen does not produce absurd text. On every current Edge
@@ -283,27 +370,27 @@ Anything smaller than the whole screen falls back to one header row and one
 footer row inside the usable rectangle: value beside state, rate beside load,
 and the range as `41-71` between them where the two leave space for it. That
 last one is not decoration: without it a short chart has no vertical scale at
-all.
+all. There is no room for the average in that layout, so it is not shown.
 
 #### What is in it
 
-- **Value**: the SmO₂ reading in the state colour, with the **coloured state
-  light** and its label on the row above. It is the same disc the chart-less
-  tiers show, so one visual vocabulary runs across every size of the field
+- **Value**: the SmO₂ reading in the state colour, with a per cent sign after
+  it. The sign is not decoration: the same field shows a rate in %/s and a THb
+  in g/dl, and a bare 58.4 beside those is one more thing to remember rather
+  than read.
+- **Cell grid** under the value, each cell a small grey caption over the
+  number: **MIN**, **AVG**, **MAX**, in the order a scale runs. MIN and MAX are
+  where the bounds used to be printed, in a gutter cut out of the chart's left
+  edge and set in the axis font. That made the two numbers the whole chart is
+  measured against the smallest text in the field, which on an Edge is 11 px,
+  and it cost the plot a fifth of its width to do so. In the grid they are the
+  same size as every other metric and the plot gets its full width back.
 - **Chart**: the trace over the chart window (default 90 s), each segment
   coloured by the state at that point, with the **area beneath it filled** in a
   darkened version of the same colour. A thin line has to be found; a filled
   shape is simply seen.
 - **Gridlines** at the top, middle and bottom of the range. No labels in the
-  plot: the bounds are cells in the grid below it.
-- **Cell grid** under the chart, each cell a small grey caption over the
-  number: **MIN** and **MAX**, plus **PACE** where there is a column for it.
-  This is where the bounds used to be printed, in a gutter cut out of the
-  chart's left edge and set in the axis font. That made the two numbers the
-  whole chart is measured against the smallest text in the field, which on an
-  Edge is 11 px, and it cost the plot a fifth of its width to do so. In the
-  grid they are the same size as every other metric and the plot gets its full
-  width back.
+  plot: the bounds are cells in the grid above it.
 - **Lap markers** as vertical lines
 - **Forecast needle**: a triangle on the right-hand edge, pointing in at the
   level the trend is heading to, in the state colour. It reads the way a
@@ -311,10 +398,14 @@ all.
   scale saying where the value is going, not a data point of its own. It
   replaced a small grey dot that sat inside the trace and read as a stray
   sample.
-- **Rate** in the state colour, and the **external load** below it. Decoupling
-  turns the load red and appends `DEC`; the row is sized once for the widest
-  string it can ever hold, and spelling the word out in full would cost the
-  pace two font steps for a flag the colour already carries.
+- **State light and label** under the chart, centred. It is the same disc the
+  chart-less tiers show, so one visual vocabulary runs across every size of the
+  field.
+- **Rate** in the state colour and the **external load**, sharing the bottom
+  row with one against each end of it. Decoupling turns the load red and
+  appends `DEC`; the row is sized once for the widest string it can ever hold,
+  and spelling the word out in full would cost the load two font steps for a
+  flag the colour already carries.
 
 SCI is not displayed. It is dimensionless and hard to read in motion, and the
 rate says the same thing in units you can act on. It is still written to FIT.
@@ -379,6 +470,16 @@ what gives the rounded ends and corners. The two-element symbols are drawn
 slightly smaller and lighter than the one-element ones, or the upper element
 runs out through the edge of the circle.
 
+Two details decide whether that actually reads as round on the glass, and both
+were wrong at first. The cap disc has to be rounded up, not truncated: a pen of
+width w covers w/2 either side of the line, and an integer division downwards
+buries the disc inside the stroke it is meant to cap, which is exactly the
+square tips the symbols had at the small sizes where w is 2 or 3 pixels. And
+the rasteriser has to be told to antialias, or a 12 px disc and a diagonal
+chevron are drawn as stair steps and there is nothing to round off. It is
+turned on only around the light, not left on for the whole field, because the
+chart's area fill relies on adjacent shapes sharing a hard edge.
+
 Below a radius of 7 px there is no room for a symbol and the disc carries the
 meaning alone.
 
@@ -390,10 +491,26 @@ rather than hidden behind the colour-blind setting.
 
 ## 6. Pace/power coupling and decoupling detection
 
-When enabled, the field shows the external load, chosen by sport: **power in
-watts on the bike, pace everywhere else**. Running by watts is a minority taste
-and running power from a watch is noisy, so pace is the running default. Pace
-follows the watch's own units, so a statute user is not handed min/km.
+When enabled, the field shows the external load. By default it is chosen by
+sport, and on the bike it is chosen per second rather than per session:
+
+- **cycling with a power meter reporting**: power in watts, `245W`
+- **cycling without one**: speed, `32.4kph` or `20.1mph`
+- **anything else**: pace, `4:35`
+
+Watts are the honest measure of work on a bike, but only when there is a power
+meter to report them, and a rider whose meter drops out mid-ride should get
+speed back rather than a dash. Speed, not pace, because nobody rides to
+minutes per kilometre. Running by watts is a minority taste and running power
+from a watch is noisy, so pace is the running default. All of it follows the
+watch's own units, so a statute user is not handed min/km.
+
+The load carries its unit where pace does not need one: `32.4` beside a rate
+in %/s is not self-evident, while `4:35` and `245W` are.
+
+The choice can be forced with the **Load shown** setting, to pace/speed or to
+power. Forcing power is honoured even when no meter is reporting, and reads
+`--W`: a blank where a number was asked for is information too.
 
 The informative moment is **decoupling**. The coefficient of variation of the
 load is computed over a 30-second window. If it is below 4 %, meaning the external load
@@ -462,9 +579,10 @@ from the render tick.
 | `lapOnKinRate`, steepest on-transient slope | %/s |
 | `lapSmo2Min`, `lapSmo2Max` | % |
 
-**Session field:** `avgSmo2`, the session average. The average only advances while
+**Session field:** `avgSmo2`, the session average. Averages only advance while
 the timer runs, so ten minutes standing around with the sensor on does not skew
-it.
+them. The same holds for the lap average behind the AVG cell, which is reset by
+the lap button.
 
 `setData()` is called only when a value actually changed, so smart recording
 does not inflate the file. Recording can be switched off.
@@ -483,7 +601,7 @@ does not inflate the file. Recording can be switched off.
 | `thetaStable1000` | 60 | θ_stable × 1000, plateau/decline boundary |
 | `thetaDrift1000` | 150 | θ_drift × 1000, controlled/overshoot boundary |
 | `chartWindowSec` | 90 | Time span of the sparkline |
-| `yAxisMode` | Auto | Auto (last minutes) / session range / fixed 20 to 80 % / fixed 0 to 100 % |
+| `yAxisMode` | Auto | Auto (last minutes) / session range / fixed 20 to 80 % / fixed 0 to 100 % / lap range |
 | `baselineSec` | 60 | Length of baseline collection |
 | `colorBlind` | off | Colour-blind palette |
 | `stateIcons` | on | Draw a symbol inside the state light, so the verdict does not rest on hue alone |
@@ -491,8 +609,10 @@ does not inflate the file. Recording can be switched off.
 | `smallMetric` | SmO₂ | What the chart-less tiers show beside the traffic light: SmO₂, rate of change, THb or the control index |
 | `smallSecond` | Rate | Second line under that number: nothing, the name of the metric, or the rate of change |
 | `rateUnit` | %/s | Unit of the displayed rate: %/s or %/min |
-| `rangeScope` | Session | Whether MIN/MAX and the session y-axis mode report the whole session or the current lap |
-| `showPace` | on | Pace/power line including the decoupling flag |
+| `rangeScope` | Session | Whether MIN/MAX report the whole session or the current lap |
+| `avgScope` | Session | The same choice for AVG, separately |
+| `showPace` | on | Pace/power/speed line including the decoupling flag |
+| `loadMetric` | Automatic | Which load that line shows: automatic (by sport), pace/speed, or power |
 | `recordFit` | on | Write SmO₂ fields to the FIT file |
 
 Floating-point settings are stored as integers (× 100 or × 1000) because the
@@ -510,12 +630,120 @@ chart and looked like violent oscillation, the precise opposite of the reading
 the field exists to convey. Measured across five sessions, a 90 s window spans a
 median of 4.8 points inside a plateau and 22.5 through an on-transient, so a
 floor of 25 keeps a plateau to about a fifth of the height while a genuine
-desaturation still fills the frame. **Session range** mode is the alternative:
-a scale that never moves, at the cost of the trace often using little of the
-chart. Which extremes "session" means is itself a setting: the whole session
-answers "where is this sitting in my range today", the current lap answers
-"what has this interval done", and which is the useful frame depends on
-whether the ride is structured.
+desaturation still fills the frame. **Session range** and **lap range** are
+the alternatives: a scale that does not move within its window, at the cost of
+the trace often using little of the chart. The whole session answers "where is
+this sitting in my range today" and the lap answers "what has this interval
+done", and which is the useful frame depends on whether the ride is
+structured.
+
+The axis mode names its own window, so it is independent of what MIN and MAX
+report. Session range on the axis beside lap MIN/MAX is a legitimate
+combination: a fixed scale to compare intervals against, with the numbers of
+the one you are in.
+
+### Which settings change the verdict, and by how much
+
+Most of the list above is display preference. Only five settings touch the
+state detection at all, and two of those only change the number you read
+rather than the colour. Nothing has to be changed: the defaults are the
+measured ones, and this section exists for the case where the colours disagree
+with what your legs are telling you.
+
+#### The flat band: thetaStable1000
+
+This is the half-width of HOLDING. Anything between falling and rising at less
+than this rate is a plateau; steeper down is DRIFTING.
+
+A rate in %/s is hard to feel, so read it as per cent per minute. At exactly
+the boundary, this is what "flat" allows:
+
+| Setting | %/s | %/min | Drift over a 4-minute interval |
+|---|---|---|---|
+| 40 | 0.040 | 2.4 | 9.6 points |
+| **60 (default)** | **0.060** | **3.6** | **14.4 points** |
+| 80 | 0.080 | 4.8 | 19.2 points |
+| 100 | 0.100 | 6.0 | 24 points |
+
+Those are worst cases at the boundary, not what a plateau normally does: the
+middle 80 % of measured plateau slopes sit inside ±0.06 %/s, which is why 60 is
+the default. But the table is the honest way to read the setting. It says that
+at the default, a four-minute interval may lose 14 points of saturation and
+still be called flat.
+
+- **Raise it** (80, 100) if the field reads DRIFTING through efforts you know
+  you can hold for the session. You will see more green and later yellow.
+- **Lower it** (40, 50) if HOLDING appears in efforts you cannot actually
+  hold. You will see yellow sooner, and a genuine plateau will occasionally
+  flicker to yellow as well.
+
+#### The decline band: thetaDrift1000
+
+The boundary between DRIFTING and FALLING, and it does double duty: the ONSET
+threshold is twice this value, because a transient is nothing but a very steep
+decline.
+
+| Setting | FALLING steeper than | ONSET steeper than |
+|---|---|---|
+| 100 | 0.100 %/s, 6 %/min | 0.200 %/s, 12 %/min |
+| **150 (default)** | **0.150 %/s, 9 %/min** | **0.300 %/s, 18 %/min** |
+| 200 | 0.200 %/s, 12 %/min | 0.400 %/s, 24 %/min |
+
+- **Raise it** if hard intervals sit on ONSET for longer than the first minute
+  or so. A higher threshold makes the field call the fall over sooner, which is
+  what starts the plateau question.
+- **Lower it** if the field never reaches FALLING even in efforts that clearly
+  run away from you.
+
+Note the direction of the ONSET effect, because it is the opposite of what the
+name suggests: a *lower* drift threshold makes ONSET trigger on gentler falls,
+so a hard interval spends *more* time in ONSET and less time being judged.
+
+#### The ruler: steadyWindowSec
+
+How much history each verdict is measured over.
+
+| Setting | Effect |
+|---|---|
+| 45 | Reacts sooner, but the measured plateau band widens to ±0.08 %/s, so real drift hides inside the noise |
+| **60 (default)** | The measured optimum across five threshold sessions |
+| 90 | The on-transient dilutes into the recovery before it and stops being detected |
+
+Two consequences worth knowing whatever you set it to. The verdict describes
+the *middle* of its window, so at 60 s the live colour is a statement about
+30 seconds ago; the chart corrects for this by colouring each past segment from
+a window centred on it, which is why the trace and the live light can disagree
+at the right-hand edge. And after each restart the field needs a third of the
+window, 20 seconds at the default, before it will say anything but ONSET.
+
+#### The two that only change the number: smoothingAlpha100, smoothingBeta100
+
+- **α, default 30.** How much of each new sensor reading enters the displayed
+  level. 15 is calmer and later, 60 follows the sensor closely and jumps with
+  it. It barely moves the colours, because the classification is a regression
+  over a whole minute of these values and averaging washes the difference out.
+  It does move the level you read, and MIN, AVG and MAX with it.
+- **β, default 15.** How quickly the fast trend re-aims. This one only feeds
+  the forecast needle. Raise it and the needle swings about; lower it and the
+  needle lags a genuine turn.
+
+`predictHorizon` (default 15 s) is how far ahead that needle points, and 0
+switches it off. `baselineSec` collects the baseline median, which nothing
+currently reads; see section 4.
+
+#### Four symptoms and what to try
+
+| What you see | What to change |
+|---|---|
+| DRIFTING through easy endurance work | `thetaStable1000` up to 80 or 100 |
+| HOLDING in intervals you have to abandon | `thetaStable1000` down to 40 or 50 |
+| ONSET for two minutes into every interval | `thetaDrift1000` up to 200 |
+| The colour turns well after you feel the change | `steadyWindowSec` down to 45, accepting a looser plateau band |
+
+Change one thing at a time, and check it against a recorded session with
+`tools/kinetics_replay.py` rather than against a feeling: the tool runs the
+same model over your own `.fit` files and prints a verdict per interval, so you
+can see what a threshold did to a workout you already know the answer to.
 
 ---
 

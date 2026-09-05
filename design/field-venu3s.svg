@@ -2,16 +2,18 @@
 <defs><clipPath id="glass"><circle cx="195.0" cy="195.0" r="195.0"/></clipPath></defs>
 <rect width="390" height="390" fill="#000"/>
 <g clip-path="url(#glass)">
-<circle cx="138.6" cy="37.4" r="12" fill="#00AAFF"/>
-<polyline points="133.3,40.5 138.6,34.3 143.8,40.5" stroke="#000" stroke-width="4.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="154.6" y="47" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF">RECOVER</text>
-<text x="195" y="126" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="77.5" fill="#00AAFF" text-anchor="middle">46.9</text>
-<text x="30" y="289" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#00AAFF">+0.101%/s</text>
-<text x="360" y="289" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF" text-anchor="end">4:10</text>
-<text x="143" y="319" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#AAA" text-anchor="middle">MIN</text>
-<text x="143" y="356" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="39.7" fill="#FFF" text-anchor="middle">41</text>
-<text x="247" y="319" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#AAA" text-anchor="middle">MAX</text>
-<text x="247" y="356" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="39.7" fill="#FFF" text-anchor="middle">71</text>
+<text x="195" y="71" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="53.4" fill="#00AAFF" text-anchor="middle">46.9%</text>
+<circle cx="103.2" cy="285.0" r="20" fill="#00AAFF"/>
+<polyline points="94.4,290.2 103.2,279.8 112.0,290.2" stroke="#000" stroke-width="6.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="127.2" y="300" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#00AAFF">RECOVER</text>
+<text x="66" y="335" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#00AAFF">+0.101%/s</text>
+<text x="324" y="335" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF" text-anchor="end">4:10</text>
+<text x="96" y="101" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#AAA" text-anchor="middle">MIN</text>
+<text x="96" y="126" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF" text-anchor="middle">39</text>
+<text x="195" y="101" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#AAA" text-anchor="middle">AVG</text>
+<text x="195" y="126" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF" text-anchor="middle">55</text>
+<text x="294" y="101" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#AAA" text-anchor="middle">MAX</text>
+<text x="294" y="126" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="27.4" fill="#FFF" text-anchor="middle">73</text>
 <line x1="27.0" y1="134.0" x2="363.0" y2="134.0" stroke="#555" stroke-width="1"/>
 <line x1="27.0" y1="256.0" x2="363.0" y2="256.0" stroke="#555" stroke-width="1"/>
 <line x1="27.0" y1="195.0" x2="363.0" y2="195.0" stroke="#555" stroke-width="1"/>

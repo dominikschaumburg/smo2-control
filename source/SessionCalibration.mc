@@ -53,9 +53,12 @@ class SessionCalibration {
     private var _lapMax as Float? = null;
     private var _lapStartMs as Number = 0;
 
-    // Session average.
+    // Session and lap averages. Both are plain running means over the samples
+    // the timer was running for; the lap one is reset by the lap button.
     private var _sum as Float = 0.0;
     private var _n as Number = 0;
+    private var _lapSum as Float = 0.0;
+    private var _lapN as Number = 0;
 
     public function initialize(baselineSec as Number) {
         _baselineSec = baselineSec;
@@ -84,7 +87,7 @@ class SessionCalibration {
 
         collectBaseline(level);
         updateExtremes(level);
-        updateLapStats(level);
+        updateLapStats(level, timerRunning);
     }
 
     private function collectBaseline(level as Float) as Void {
@@ -126,10 +129,14 @@ class SessionCalibration {
         _max = hi;
     }
 
-    private function updateLapStats(level as Float) as Void {
+    private function updateLapStats(level as Float, timerRunning as Boolean) as Void {
         if (_lapStart == null) { _lapStart = level; }
         if (_lapMin == null || level < (_lapMin as Float)) { _lapMin = level; }
         if (_lapMax == null || level > (_lapMax as Float)) { _lapMax = level; }
+        if (timerRunning) {
+            _lapSum += level;
+            _lapN++;
+        }
     }
 
     //! Lap button pressed. Closes the current lap and returns its statistics,
@@ -172,6 +179,8 @@ class SessionCalibration {
         _lapMin = level;
         _lapMax = level;
         _lapStartMs = now;
+        _lapSum = (level == null) ? 0.0 : level as Float;
+        _lapN = (level == null) ? 0 : 1;
         return result;
     }
 
@@ -228,6 +237,12 @@ class SessionCalibration {
         return (_n > 0) ? _sum / _n : null;
     }
 
+    //! Mean over the current lap only, which is the frame that answers "what
+    //! did this interval sit at" rather than "what has today averaged".
+    public function getLapAverage() as Float? {
+        return (_lapN > 0) ? _lapSum / _lapN : null;
+    }
+
     public function onTimerReset() as Void {
         resetRange(null);
         _lapIndex = 0;
@@ -239,5 +254,7 @@ class SessionCalibration {
         _lapStartMs = System.getTimer();
         _sum = 0.0;
         _n = 0;
+        _lapSum = 0.0;
+        _lapN = 0;
     }
 }

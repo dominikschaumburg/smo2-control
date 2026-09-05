@@ -37,10 +37,20 @@ class SmO2ControlView extends WatchUi.DataField {
         RATE_PER_MIN = 1
     }
 
-    //! Whose extremes the session y-axis and the MIN/MAX labels report.
+    //! Whose extremes a range readout reports. Used separately for the
+    //! MIN/MAX cells and for the average.
     enum RangeScope {
         SCOPE_SESSION = 0,
         SCOPE_LAP     = 1
+    }
+
+    //! Which external load the field shows. On the bike watts are the honest
+    //! measure of work, but only if a power meter is reporting, so the default
+    //! decides per tick rather than per session.
+    enum LoadMetric {
+        LOAD_AUTO  = 0,
+        LOAD_SPEED = 1,
+        LOAD_POWER = 2
     }
 
     //! The second line of a chart-less tier, under the number.
@@ -73,10 +83,15 @@ class SmO2ControlView extends WatchUi.DataField {
     // "DECOUPLING": the row is sized once for the widest thing it can ever
     // hold, and spelling the word out costs the pace two font steps for a
     // flag that the colour already carries.
-    private const LOAD_SAMPLE = "88:88 DEC";
+    private const LOAD_SAMPLE = "88.8kph DEC";
 
-    // Widest caption in the cell grid under the chart.
-    private const CELL_CAPTION_SAMPLE = "PACE";
+    // Widest load string on its own, for the row it shares with the rate.
+    // Speed carries its unit because "32.4" beside a rate in %/s is not
+    // self-evident, where "4:35" and "245W" are.
+    private const LOAD_WIDEST = "88.8kph";
+
+    // Widest caption in the cell grid under the value.
+    private const CELL_CAPTION_SAMPLE = "MAX";
 
     // Font ladders, widest first, shared by every "largest that fits" search.
     private const NUMBER_FONTS = [
@@ -114,6 +129,8 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _smallMetric as Number = METRIC_SMO2;
     private var _rateUnit as Number = RATE_PER_SEC;
     private var _rangeScope as Number = SCOPE_SESSION;
+    private var _avgScope as Number = SCOPE_SESSION;
+    private var _loadMetric as Number = LOAD_AUTO;
     private var _smallSecond as Number = SECOND_RATE;
     private var _stateIcons as Boolean = true;
 
@@ -159,8 +176,8 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _rateFont as FontDefinition = Graphics.FONT_XTINY;
     private var _loadFont as FontDefinition? = null;
 
-    // The grid of cells under the chart: MIN, MAX and the external load, each
-    // a small grey caption over a legible number.
+    // The grid of cells beside the value: MIN, AVG and MAX, each a small grey
+    // caption over a legible number.
     private var _cellFont as FontDefinition = Graphics.FONT_XTINY;
     private var _capFont as FontDefinition = Graphics.FONT_XTINY;
     private var _cellY as Number = 0;
@@ -168,7 +185,6 @@ class SmO2ControlView extends WatchUi.DataField {
     private var _cellW as Number = 0;
     private var _cells as Number = 0;
     private var _rateW as Number = 0;
-    private var _paceInCells as Boolean = true;
     private var _showRange as Boolean = false;
     private var _stateY as Number = 0;
     private var _valueY as Number = 0;
@@ -196,8 +212,10 @@ class SmO2ControlView extends WatchUi.DataField {
     // Set when a settings change invalidated the cached geometry.
     private var _relayout as Boolean = true;
 
-    // Which external load signal this sport uses. Resolved once, the first time
-    // the activity profile is readable.
+    // Sport, resolved once the first time the activity profile is readable,
+    // and whether this tick's load reading is watts. The second is per tick,
+    // not per session: on the bike it depends on a power meter being there.
+    private var _cycling as Boolean = false;
     private var _usePower as Boolean = false;
     private var _sportResolved as Boolean = false;
 
@@ -213,6 +231,8 @@ class SmO2ControlView extends WatchUi.DataField {
         _smallMetric = s[:smallMetric] as Number;
         _rateUnit = s[:rateUnit] as Number;
         _rangeScope = s[:rangeScope] as Number;
+        _avgScope = s[:avgScope] as Number;
+        _loadMetric = s[:loadMetric] as Number;
         _smallSecond = s[:smallSecond] as Number;
         _stateIcons = s[:stateIcons] as Boolean;
         Palette.colorBlind = s[:colorBlind] as Boolean;
@@ -251,6 +271,8 @@ class SmO2ControlView extends WatchUi.DataField {
             :smallMetric    => numProp("smallMetric", 0),
             :rateUnit       => numProp("rateUnit", 0),
             :rangeScope     => numProp("rangeScope", 0),
+            :avgScope       => numProp("avgScope", 0),
+            :loadMetric     => numProp("loadMetric", 0),
             :smallSecond    => numProp("smallSecond", 2),
             :stateIcons     => boolProp("stateIcons", true),
             :plainLabels    => boolProp("plainLabels", true)
@@ -276,6 +298,8 @@ class SmO2ControlView extends WatchUi.DataField {
         _smallMetric = s[:smallMetric] as Number;
         _rateUnit = s[:rateUnit] as Number;
         _rangeScope = s[:rangeScope] as Number;
+        _avgScope = s[:avgScope] as Number;
+        _loadMetric = s[:loadMetric] as Number;
         _smallSecond = s[:smallSecond] as Number;
         _stateIcons = s[:stateIcons] as Boolean;
         Palette.colorBlind = s[:colorBlind] as Boolean;
@@ -369,6 +393,15 @@ class SmO2ControlView extends WatchUi.DataField {
     //! Rectangular full-screen field: metric rows pinned to the top and
     //! bottom edges, chart taking everything between them.
     //!
+    //! Two blocks, and which numbers share a block is the point. Above the
+    //! chart go the four readings of the same quantity — the level, then MIN,
+    //! AVG and MAX — so the eye can place the big number inside its own range
+    //! without crossing the plot. Below it goes everything that is about the
+    //! effort rather than the level: the state light and its name, then the
+    //! rate of change and the external load. Grouping them the other way,
+    //! with the state beside the value and MIN/MAX under the chart, made the
+    //! athlete read two halves of each question in two different places.
+    //!
     //! The rule is to pack away from whatever the binding constraint is. On a
     //! round screen that is the chord, so the rows go inwards and the tips are
     //! written off (see layoutThirds). A rectangle has no chord, so there is
@@ -406,26 +439,32 @@ class SmO2ControlView extends WatchUi.DataField {
         var valueAsc = Graphics.getFontAscent(valueFont as FontDefinition);
         var stateAsc = Graphics.getFontAscent(stateFont as FontDefinition);
 
-        // Same proportion rule as the round layout: the rate string is three
-        // times as long as the value, so at equal heights it reads as the
-        // headline, and SmO2 is the headline.
-        var rateFont = fitByWidth(dc, TEXT_FONTS, "-8.888%/s", availW,
-            valueAsc * 3 / 4);
+        // The rate shares its row with the load, and is capped at three
+        // quarters of the state label rather than of the value: the state is
+        // the headline of the block it sits in.
+        var rateCap = stateAsc * 3 / 4;
+        var minLine = Graphics.getFontAscent(Graphics.FONT_XTINY);
+        if (rateCap < minLine) { rateCap = minLine; }
+        var rateFont = fitByWidth(dc, TEXT_FONTS, rateRowSample(), availW,
+            rateCap);
         if (rateFont == null) {
             return false;
         }
         var rateAsc = Graphics.getFontAscent(rateFont as FontDefinition);
 
-        var cellH = planCells(dc, _h - PAD, _h / 8, _showPace ? 3 : 2, false);
+        // MIN / AVG / MAX directly under the value, so the four readings of
+        // SmO2 are one block. The trio doubles as the chart's vertical
+        // legend, which is why it sits on the chart's side of the value.
+        var cellH = planCells(dc, 2 * PAD + valueAsc, cellCap(valueAsc), 3,
+            true);
         if (cellH == 0) {
             return false;
         }
-        _paceInCells = _showPace;
 
-        var topH = 3 * PAD + stateAsc + valueAsc;
-        // Three pads, not two: at two the rate's baseline and the caption
-        // row's top edge land on the same pixel.
-        var botH = 3 * PAD + rateAsc + cellH;
+        var topH = 2 * PAD + valueAsc + cellH;
+        // Three pads, not two: at two the state's baseline and the rate row's
+        // top edge land on the same pixel.
+        var botH = 3 * PAD + stateAsc + rateAsc;
         var chartH = _h - topH - botH - 2 * PAD;
         if (chartH < FULL_MIN_H) {
             return false;
@@ -436,9 +475,12 @@ class SmO2ControlView extends WatchUi.DataField {
         _rateFont = rateFont as FontDefinition;
         _dotR = stateAsc / 2;
 
-        _stateY = PAD;
-        _valueY = 2 * PAD + stateAsc;
-        _rateY = _h - botH + PAD;
+        _valueY = PAD;
+        _stateY = _h - botH + PAD;
+        _rateY = _stateY + stateAsc + PAD;
+        // The rate and the load take an end of the row each. A rectangle has
+        // the full width here, so there is no chord to measure.
+        _rateW = availW;
 
         _chartX = PAD;
         _chartY = topH + PAD;
@@ -447,10 +489,9 @@ class SmO2ControlView extends WatchUi.DataField {
         return true;
     }
 
-    //! Lay out the cell grid under the chart: MIN, MAX, and the external
-    //! load when there is a column for it. Each cell is a small grey caption
-    //! over the number, which is narrower than putting them on one line and
-    //! reads like a dashboard rather than like a sentence.
+    //! Lay out the cell grid beside the value: MIN, AVG and MAX. Each cell is
+    //! a small grey caption over the number, which is narrower than putting
+    //! them on one line and reads like a dashboard rather than a sentence.
     //!
     //! `anchor` is the row's top edge when `fromTop`, otherwise its bottom.
     //! The chord is re-measured for every candidate font, because the row's
@@ -466,7 +507,9 @@ class SmO2ControlView extends WatchUi.DataField {
         _capFont = Graphics.FONT_XTINY;
         var capAsc = Graphics.getFontAscent(_capFont);
         var capW = dc.getTextWidthInPixels(CELL_CAPTION_SAMPLE, _capFont);
-        var sample = (nCells > 2) ? "88:88" : "88.8";
+        // The cells print whole per cent, so "88.8" is a deliberate
+        // over-estimate: it is wider than both "100" and "88".
+        var sample = "88.8";
 
         for (var i = 0; i < TEXT_FONTS.size(); i++) {
             var f = TEXT_FONTS[i];
@@ -498,7 +541,22 @@ class SmO2ControlView extends WatchUi.DataField {
         return 0;
     }
 
-    //! Largest font from `ladder` whose sample fits a width and a height.    //! Largest font from `ladder` whose sample fits a width and a height.
+    //! Height cap for the numbers in the cell row, from the value's own
+    //! height.
+    //!
+    //! This is not a cosmetic proportion, it is what keeps the pair in the
+    //! right order. planCells() takes the largest font that fits, and on an
+    //! FR970 that is a 38 px cell number, a 59 px row, and a value pushed
+    //! down from 100 px to 48 — the supporting numbers ending up larger than
+    //! the reading they support. Half the value's height, and never below the
+    //! caption font, so there is always something that fits.
+    private function cellCap(valueAsc as Number) as Number {
+        var cap = valueAsc / 2;
+        var floor = Graphics.getFontAscent(Graphics.FONT_XTINY);
+        return (cap < floor) ? floor : cap;
+    }
+
+    //! Largest font from `ladder` whose sample fits a width and a height.
     //! No chord involved, so this is only for rectangular screens.
     private function fitByWidth(dc as Dc, ladder as Array<FontDefinition>,
                                 sample as String, availW as Number,
@@ -513,24 +571,28 @@ class SmO2ControlView extends WatchUi.DataField {
         return null;
     }
 
-    //! Thirds grid: metrics in the top third, the chart in the middle third,
-    //! metrics in the bottom third.
+    //! Thirds grid: the value and its MIN / AVG / MAX trio in the top third,
+    //! the chart in the middle third, the state light and the rate/load row
+    //! in the bottom third.
     //!
     //! This ignores the inscribed rectangle and lays out against the whole
     //! field, which is the point. The rectangle exists so that *one* block of
     //! content is guaranteed to be on the glass; a row of text needs only the
     //! chord at its own height, and near the middle of a round screen that
-    //! chord is the full width. Working row by row is what lets the value be
-    //! 105 px tall on an FR970 instead of 78, and it puts the chart in the
-    //! widest part of the display rather than inset from it.
+    //! chord is the full width. Working row by row is what makes room for
+    //! four rows at all, and it puts the chart in the widest part of the
+    //! display rather than inset from it: 396 px of chord on an FR970 against
+    //! the 350 px the inscribed rectangle offers.
     //!
     //! Rows are packed against the *inner* edge of their third and grow
     //! outwards from there. Filling each third from its outer edge was tried
     //! first and fails on a round screen for an obvious reason once you see
     //! it: at y = 4 on a 454 px circle the glass is 73 px wide, so the row
     //! that got the top of the top third could not hold a single word. Packing
-    //! inwards also puts the largest element nearest the middle, which is
-    //! where the chord is widest, so the two constraints agree.
+    //! inwards also puts the *widest* element nearest the middle, which is
+    //! where the chord is widest, so the two constraints agree — which is why
+    //! the three-cell trio, not the single number, is the one against the
+    //! chart.
     //!
     //! Returns false if any row cannot be fitted, which hands over to the
     //! two-row layout.
@@ -560,74 +622,85 @@ class SmO2ControlView extends WatchUi.DataField {
         var minLine = Graphics.getFontAscent(Graphics.FONT_XTINY);
         var cap = band - 3 * PAD - minLine;
 
-        // --- top third: label above, number below, packed upwards -------
+        // --- top third: MIN / AVG / MAX against the inner edge, the value
+        //     above it ------------------------------------------------------
+        //
+        // The trio goes inside, next to the chart, for two reasons that agree.
+        // It is the chart's vertical legend, so that is where it belongs; and
+        // it is the wider of the two rows, three cells against one number, so
+        // it is the one that needs the wider chord. Measured on an FR970, the
+        // other way round costs the value a font step: 48 px with the trio
+        // outside against 56 px with it inside.
+        //
+        // The trio also takes the shortest row that can hold it, which is the
+        // caption font twice over. The top third is the scarcest space in the
+        // field and every pixel it does not take is a pixel of value.
+        var capAsc = Graphics.getFontAscent(Graphics.FONT_XTINY);
+        if (planCells(dc, band - PAD, capAsc, 3, false) == 0) {
+            return false;
+        }
+        var valueBottom = _cellY - PAD;
+
         var valueFont = null as FontDefinition?;
-        var stateFont = null as FontDefinition?;
         var valueTop = 0;
         for (var i = 0; i < NUMBER_FONTS.size() && valueFont == null; i++) {
             var vf = NUMBER_FONTS[i];
             var vAsc = Graphics.getFontAscent(vf);
-            if (vAsc > cap
-                || !fitsChord(dc, vf, metricSample(), band - PAD - vAsc,
-                              band - PAD, false)) {
+            if (vAsc > cap || valueBottom - vAsc < PAD) {
                 continue;
             }
-            var top = band - PAD - vAsc;
-            var sf = rowFontUp(dc, TEXT_FONTS, Palette.widestLabel(),
-                top - PAD, top - 2 * PAD, true);
-            if (sf != null) {
+            if (fitsChord(dc, vf, metricSample(), valueBottom - vAsc,
+                          valueBottom, false)) {
                 valueFont = vf;
-                stateFont = sf;
-                valueTop = top;
+                valueTop = valueBottom - vAsc;
             }
         }
-        if (valueFont == null || stateFont == null) {
+        if (valueFont == null) {
+            return false;
+        }
+        var valueAsc = Graphics.getFontAscent(valueFont as FontDefinition);
+
+        // --- bottom third: the state light and its name against the inner
+        //     edge, the rate and the load sharing the row below ------------
+        //
+        // The state gets the inner row because that is where the chord is
+        // widest, and it is the one element that has to survive a glance. The
+        // rate is capped at three quarters of it: the rate string is three
+        // times as long, so at equal heights it takes three times the ink and
+        // would read as the headline instead.
+        //
+        // The state is capped at the value's own height. Without that a
+        // narrow value and a wide bottom chord let an eight-letter word be
+        // set larger than the reading it qualifies.
+        var stateTop = 2 * band + PAD;
+        var stateFont = null as FontDefinition?;
+        var rateFont = null as FontDefinition?;
+        var rateTop = 0;
+        for (var i = 0; i < TEXT_FONTS.size() && stateFont == null; i++) {
+            var sf = TEXT_FONTS[i];
+            var sAsc = Graphics.getFontAscent(sf);
+            if (sAsc > cap || sAsc > valueAsc
+                || !fitsChord(dc, sf, Palette.widestLabel(), stateTop,
+                              stateTop + sAsc, true)) {
+                continue;
+            }
+            var rTop = stateTop + sAsc + PAD;
+            var rateCap = sAsc * 3 / 4;
+            if (rateCap < minLine) { rateCap = minLine; }
+            var rf = rowFontDown(dc, TEXT_FONTS, rateRowSample(), rTop,
+                rateCap);
+            if (rf != null) {
+                stateFont = sf;
+                rateFont = rf;
+                rateTop = rTop;
+                _rateW = chordAt(rTop, rTop + Graphics.getFontAscent(rf))
+                         - 2 * PAD;
+            }
+        }
+        if (stateFont == null || rateFont == null) {
             return false;
         }
         var stateAsc = Graphics.getFontAscent(stateFont as FontDefinition);
-        var valueAsc = Graphics.getFontAscent(valueFont as FontDefinition);
-
-        // --- bottom third: rate above load, packed downwards ------------
-        //
-        // The rate is capped against the value rather than the band. The rate
-        // string is three times as long as the value, so at equal cap heights
-        // it takes three times the ink and reads as the headline. SmO2 is the
-        // headline; three quarters keeps that order without making the rate
-        // small.
-        var rateCap = valueAsc * 3 / 4;
-        if (rateCap > cap) { rateCap = cap; }
-        var rateTop = 2 * band + PAD;
-        var rateFont = null as FontDefinition?;
-        var capAsc = Graphics.getFontAscent(Graphics.FONT_XTINY);
-        var rateSample = _showPace ? "-8.888%/s 88:88" : "-8.888%/s";
-        for (var i = 0; i < TEXT_FONTS.size() && rateFont == null; i++) {
-            var rf = TEXT_FONTS[i];
-            var rAsc = Graphics.getFontAscent(rf);
-            if (rAsc > rateCap
-                || !fitsChord(dc, rf, rateSample, rateTop, rateTop + rAsc,
-                              false)) {
-                continue;
-            }
-            // The cell grid goes under the rate. Its chord is measured over
-            // the whole two-line cell, so a font that only fits the caption
-            // line is rejected.
-            //
-            // Only two cells here: MIN and MAX. A round screen has room for
-            // exactly two rows in an outer third, and at three cells the
-            // bottom row is 83 px of chord per cell and the numbers come out
-            // at the same size they were in the gutter, which was the
-            // complaint. The pace shares the rate's row instead, which is
-            // wide enough for both because it sits nearer the middle.
-            var cTop = rateTop + rAsc + PAD;
-            if (planCells(dc, cTop, _h - PAD - cTop - capAsc, 2, true) > 0) {
-                rateFont = rf;
-                _rateW = chordAt(rateTop, rateTop + rAsc) - 2 * PAD;
-                _paceInCells = false;
-            }
-        }
-        if (rateFont == null) {
-            return false;
-        }
 
         // The chart takes the middle third whole, at the chord its own edges
         // allow. Both edges are the same distance from the centre line when
@@ -648,8 +721,8 @@ class SmO2ControlView extends WatchUi.DataField {
         _rateFont = rateFont as FontDefinition;
         _dotR = stateAsc / 2;
 
-        _stateY = valueTop - PAD - stateAsc;
         _valueY = valueTop;
+        _stateY = stateTop;
         _rateY = rateTop;
 
         _chartX = _cx.toNumber() - chordW / 2;
@@ -724,14 +797,15 @@ class SmO2ControlView extends WatchUi.DataField {
         return null;
     }
 
-    //! The same for a row whose *top* edge is fixed.
+    //! The same for a row whose *top* edge is fixed. One pad of margin at the
+    //! bottom, so the last row of the field is not flush against the bezel.
     private function rowFontDown(dc as Dc, ladder as Array<FontDefinition>,
                                  sample as String, top as Number,
                                  maxAsc as Number) as FontDefinition? {
         for (var i = 0; i < ladder.size(); i++) {
             var f = ladder[i];
             var asc = Graphics.getFontAscent(f);
-            if (asc > maxAsc || top + asc > _h) {
+            if (asc > maxAsc || top + asc > _h - PAD) {
                 continue;
             }
             if (fitsChord(dc, f, sample, top, top + asc, false)) {
@@ -1017,16 +1091,26 @@ class SmO2ControlView extends WatchUi.DataField {
     //! in either signal on its own.
     //!
     //! Which signal counts as "the load" depends on the sport. On the bike that
-    //! is power. Running by watts is a minority taste and running power from a
-    //! watch is noisy, so there the load — and the display — is pace.
+    //! is power, when a power meter is reporting; otherwise speed. Running by
+    //! watts is a minority taste and running power from a watch is noisy, so
+    //! there the load — and the display — is pace. All three can be forced
+    //! with the loadMetric setting.
     private function updateLoad(info as Activity.Info) as Void {
         resolveSport();
 
-        var load = null as Float?;
         var power = info.currentPower;
         var speed = info.currentSpeed;
+        var havePower = power != null && (power as Number) > 0;
 
-        if (_usePower && power != null && (power as Number) > 0) {
+        // Decided per tick, not per session: a rider whose power meter drops
+        // out mid-ride should fall back to speed rather than to a dash. An
+        // explicit choice of watts is honoured either way, because a blank
+        // where a number was asked for is information too.
+        _usePower = (_loadMetric == LOAD_POWER)
+                    || (_loadMetric == LOAD_AUTO && _cycling && havePower);
+
+        var load = null as Float?;
+        if (_usePower && havePower) {
             load = (power as Number).toFloat();
         } else if (speed != null && (speed as Float) > 0.3) {
             load = speed as Float;
@@ -1064,9 +1148,9 @@ class SmO2ControlView extends WatchUi.DataField {
         return Math.sqrt(sq / _loadCount) / mean < LOAD_STEADY_CV;
     }
 
-    //! Cache whether this sport is measured in watts. The activity profile is
-    //! not always readable at construction time, so this resolves lazily and
-    //! then stops asking.
+    //! Cache whether this is a cycling activity. The activity profile is not
+    //! always readable at construction time, so this resolves lazily and then
+    //! stops asking.
     private function resolveSport() as Void {
         if (_sportResolved) {
             return;
@@ -1075,12 +1159,17 @@ class SmO2ControlView extends WatchUi.DataField {
         if (profile == null) {
             return;
         }
-        _usePower = (profile.sport == Activity.SPORT_CYCLING);
+        _cycling = (profile.sport == Activity.SPORT_CYCLING);
         _sportResolved = true;
     }
 
-    //! Power on the bike, pace everywhere else — in the units the watch is set
-    //! to, so a statute user is not handed min/km.
+    //! The load as one short string: watts, or speed on the bike and pace
+    //! everywhere else. In the units the watch is set to, so a statute user is
+    //! not handed min/km.
+    //!
+    //! Speed rather than pace on the bike because nobody rides to minutes per
+    //! kilometre, and it carries its unit because "32.4" next to a rate in
+    //! %/s is not self-evident where "4:35" and "245W" are.
     private function formatLoad(speed as Float?, power as Number?) as String {
         if (_usePower) {
             if (power != null && (power as Number) > 0) {
@@ -1088,10 +1177,19 @@ class SmO2ControlView extends WatchUi.DataField {
             }
             return "--W";
         }
+        var settings = System.getDeviceSettings();
+        if (_cycling) {
+            var statute = settings.distanceUnits == System.UNIT_STATUTE;
+            if (speed == null || (speed as Float) < 0.3) {
+                return statute ? "--mph" : "--kph";
+            }
+            var v = (speed as Float) * (statute ? 2.23694 : 3.6);
+            return v.format("%.1f") + (statute ? "mph" : "kph");
+        }
         if (speed == null || (speed as Float) < 0.3) {
             return "--:--";
         }
-        var perUnit = (System.getDeviceSettings().paceUnits == System.UNIT_STATUTE)
+        var perUnit = (settings.paceUnits == System.UNIT_STATUTE)
             ? 1609.344 : 1000.0;
         var sec = (perUnit / (speed as Float)).toNumber();
         if (sec > 3599) { return "--:--"; }
@@ -1134,6 +1232,7 @@ class SmO2ControlView extends WatchUi.DataField {
 
         // An unlit light still has to read as a light rather than as nothing,
         // or a dropout looks like a layout bug.
+        StateIcon.smooth(dc, true);
         if (known) {
             dc.setColor(Palette.forState(_dispState), Graphics.COLOR_TRANSPARENT);
             dc.fillCircle(x0 + _dotR, _dotY, _dotR);
@@ -1149,6 +1248,7 @@ class SmO2ControlView extends WatchUi.DataField {
             dc.drawCircle(x0 + _dotR, _dotY, _dotR - 1);
             dc.setPenWidth(1);
         }
+        StateIcon.smooth(dc, false);
 
         dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x0 + 2 * _dotR + _dotGap, _dotY, _valueFont, text,
@@ -1161,13 +1261,17 @@ class SmO2ControlView extends WatchUi.DataField {
         }
     }
 
-    //! Full tier: the chart is the subject, with one metric above and one
-    //! below it, or two of each when the screen shape allows.
+    //! Full tier: the chart is the subject, framed by two blocks of numbers.
     //!
-    //! The session range used to be printed in the footer; it is the y axis
-    //! now, which is where a range belongs. SCI is gone from the display
-    //! entirely: dimensionless and hard to read in motion, and the rate says
-    //! the same thing in units you can act on. It is still written to the FIT.
+    //! Above it, the level and the three numbers that give it a scale, MIN /
+    //! AVG / MAX. Below it, the verdict: the state light and its name, then
+    //! the rate of change and the external load. One block answers "what is
+    //! the reading", the other "what does it mean", and neither makes the eye
+    //! cross the plot to finish a question.
+    //!
+    //! SCI is not on the display at all: dimensionless and hard to read in
+    //! motion, and the rate says the same thing in units you can act on. It
+    //! is still written to the FIT.
     private function drawFull(dc as Dc, fg as Number, bg as Number) as Void {
         dc.setColor(Graphics.COLOR_TRANSPARENT, bg);
         dc.clear();
@@ -1175,44 +1279,42 @@ class SmO2ControlView extends WatchUi.DataField {
         var stateColor = (_dispState == STATE_UNKNOWN) ? fg : Palette.forState(_dispState);
         var stateFont = (_stateFont == null) ? _labelFont : _stateFont as FontDefinition;
 
-        _chart.setBounds(_yAxisMode, rangeMin(), rangeMax());
+        _chart.setBounds(_yAxisMode, axisMin(), axisMax());
         _chart.draw(dc, _chartX, _chartY, _chartW, _chartH, _dispPrediction, fg);
 
         var state = statusText();
         var rate = trendText();
 
         if (_stacked) {
-            // Centred rows framing the chart, plus the cell grid under it.
             var mid = _cx.toNumber();
+
+            // The SmO2 block: the level, then its range and mean.
+            dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(mid, _valueY, _valueFont, valueText(),
+                Graphics.TEXT_JUSTIFY_CENTER);
+            drawCells(dc, fg);
+
+            // The verdict block: light and name, then rate and load. The two
+            // share a row, one against each end of it, which is why the row
+            // sits nearer the middle of a round screen than the light does.
             drawStateRow(dc, stateColor, bg, mid,
                 _stateY + Graphics.getFontAscent(stateFont) / 2, state,
                 stateFont, Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(stateColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(mid, _valueY, _valueFont, valueText(),
-                Graphics.TEXT_JUSTIFY_CENTER);
-
-            if (_paceInCells) {
+            if (_showPace) {
+                dc.drawText(mid - _rateW / 2, _rateY, _rateFont, rate,
+                    Graphics.TEXT_JUSTIFY_LEFT);
+                dc.setColor(_decoupled ? Palette.forState(STATE_OVERSHOOT) : fg,
+                    Graphics.COLOR_TRANSPARENT);
+                dc.drawText(mid + _rateW / 2, _rateY, _rateFont, _paceText,
+                    Graphics.TEXT_JUSTIFY_RIGHT);
+            } else {
+                // Nothing to share the row with, so the rate takes the middle
+                // rather than hanging off one end of an empty row.
                 dc.drawText(mid, _rateY, _rateFont, rate,
                     Graphics.TEXT_JUSTIFY_CENTER);
-            } else {
-                // Rate and load share the row, one against each end of the
-                // chord. This is the round layout: the row sits near the
-                // middle of the circle and is wide enough for both, which
-                // frees the row below it for MIN and MAX at a legible size.
-                var l = mid - _rateW / 2;
-                var r = mid + _rateW / 2;
-                dc.drawText(l, _rateY, _rateFont, rate,
-                    Graphics.TEXT_JUSTIFY_LEFT);
-                if (_showPace) {
-                    dc.setColor(_decoupled ? Palette.forState(STATE_OVERSHOOT) : fg,
-                        Graphics.COLOR_TRANSPARENT);
-                    dc.drawText(r, _rateY, _rateFont, _paceText,
-                        Graphics.TEXT_JUSTIFY_RIGHT);
-                }
             }
-
-            drawCells(dc, fg);
             return;
         }
 
@@ -1260,8 +1362,8 @@ class SmO2ControlView extends WatchUi.DataField {
         return (lo as Float).format("%d") + "-" + (hi as Float).format("%d");
     }
 
-    //! The cell grid under the chart: MIN, MAX and the external load, each a
-    //! grey caption over the number.
+    //! The cell grid beside the value: MIN, AVG and MAX, each a grey caption
+    //! over the number, in the order a scale runs.
     //!
     //! MIN and MAX define the vertical scale of the chart, so they used to be
     //! printed in a gutter cut out of its left edge, in the axis font. That
@@ -1272,29 +1374,25 @@ class SmO2ControlView extends WatchUi.DataField {
         var capAsc = Graphics.getFontAscent(_capFont);
         var lo = rangeMin();
         var hi = rangeMax();
+        var avg = avgValue();
 
         for (var i = 0; i < _cells; i++) {
             var cx = _cellX + i * _cellW + _cellW / 2;
             var caption = "MIN";
-            var text = (lo == null) ? "--" : (lo as Float).format("%d");
-            var color = fg;
+            var v = lo;
             if (i == 1) {
-                caption = "MAX";
-                text = (hi == null) ? "--" : (hi as Float).format("%d");
+                caption = "AVG";
+                v = avg;
             } else if (i == 2) {
-                caption = _usePower ? "PWR" : "PACE";
-                text = _paceText;
-                if (_decoupled) {
-                    // The cell is sized once for its widest caption, so the
-                    // flag cannot be a word here. Red is the flag.
-                    color = Palette.forState(STATE_OVERSHOOT);
-                }
+                caption = "MAX";
+                v = hi;
             }
+            var text = (v == null) ? "--" : (v as Float).format("%d");
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, _cellY, _capFont, caption,
                 Graphics.TEXT_JUSTIFY_CENTER);
-            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, _cellY + capAsc, _cellFont, text,
                 Graphics.TEXT_JUSTIFY_CENTER);
         }
@@ -1315,10 +1413,12 @@ class SmO2ControlView extends WatchUi.DataField {
 
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         if (lit) {
+            StateIcon.smooth(dc, true);
             dc.fillCircle(x0 + _dotR, midY, _dotR);
             if (_stateIcons) {
                 StateIcon.draw(dc, x0 + _dotR, midY, _dotR, _dispState, bg);
             }
+            StateIcon.smooth(dc, false);
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         }
         dc.drawText(x0 + groupW - tw, midY, font, text,
@@ -1338,16 +1438,43 @@ class SmO2ControlView extends WatchUi.DataField {
         return (_rangeScope == SCOPE_LAP) ? _calib.getLapMax() : _calib.getMax();
     }
 
+    //! The mean, over whichever window its own setting names. It has a
+    //! setting of its own rather than following MIN/MAX because the two
+    //! answer different questions: the range where a reading sits today is
+    //! usually a session fact, while the mean of an interval is a lap fact.
+    private function avgValue() as Float? {
+        return (_avgScope == SCOPE_LAP)
+            ? _calib.getLapAverage() : _calib.getSessionAverage();
+    }
+
+    //! The extremes the chart's y axis is scaled to. Independent of the
+    //! MIN/MAX scope: the axis mode names its own window, so a session range
+    //! on the axis beside lap MIN/MAX is a legitimate combination.
+    private function axisMin() as Float? {
+        return (_yAxisMode == ChartRenderer.Y_LAP)
+            ? _calib.getLapMin() : _calib.getMin();
+    }
+
+    private function axisMax() as Float? {
+        return (_yAxisMode == ChartRenderer.Y_LAP)
+            ? _calib.getLapMax() : _calib.getMax();
+    }
+
     //! Worst-case string for the metric on show, for font sizing. The full
     //! tier always shows SmO2 whatever the small tiers are set to.
     private function metricSample() as String {
-        if (_tier == TIER_FULL) { return "88.8"; }
+        if (_tier == TIER_FULL) { return "88.8%"; }
         switch (_smallMetric) {
             case METRIC_RATE: return (_rateUnit == RATE_PER_MIN) ? "-88.8" : "-8.88";
             case METRIC_THB:  return "88.88";
             case METRIC_SCI:  return "8.88";
         }
-        return "88.8";
+        return "88.8%";
+    }
+
+    //! Worst-case string for the row the rate shares with the load.
+    private function rateRowSample() as String {
+        return _showPace ? "-8.888%/s " + LOAD_WIDEST : "-8.888%/s";
     }
 
     //! The chosen metric as text, without its unit.
@@ -1400,10 +1527,13 @@ class SmO2ControlView extends WatchUi.DataField {
         return (_rateUnit == RATE_PER_MIN) ? "%/min" : "%/s";
     }
 
+    //! The SmO2 level, with its unit. The per cent sign is not decoration:
+    //! the field also shows a rate in %/s and a THb in g/dl, and a bare 58.4
+    //! beside them is one more thing to remember rather than read.
     private function valueText() as String {
         if (_sensorState == SENSOR_CLOSED) { return "---"; }
         if (_dispValue == null) { return "--"; }
-        return (_dispValue as Float).format("%.1f");
+        return (_dispValue as Float).format("%.1f") + "%";
     }
 
     private function statusText() as String {

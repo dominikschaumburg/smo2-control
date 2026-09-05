@@ -27,26 +27,26 @@ begins with a steep fall, and that is not yet a verdict; what separates a
 sustainable interval from an overcooked one is whether the plateau arrives
 afterwards. So the transient gets its own state.
 
-Calibrated against real data
+Nothing to calibrate
 
-The thresholds are measured, not guessed. Across five real threshold sessions
-the slope inside a plateau stays within ±0.06 %/s over 60 seconds, while the
-on-transient runs past −0.23 %/s.
+The verdict comes from the slope, not the level, so it does not depend on
+sensor site, strap pressure or day form. Nothing to set up: put the sensor on,
+start, and the states work within a minute.
 
 Adaptive display
 
-Full screen: value and state light on top, the chart in the middle, rate below,
-and MIN / MAX / PACE as a labelled cell grid under it. Every row is as large as
-its width allows, and on a bike computer the rows sit on the edges so the chart
-takes the height between. It shows state-coloured segments with the area
-beneath filled, gridlines, lap markers, and a forecast needle pointing in at
-where the trend is heading.
+Full screen: the value with MIN / AVG / MAX as a labelled cell grid above the
+chart, the state light with its name, the rate and the load below it. Every row
+is as large as its width allows, and on a bike computer the rows sit on the
+edges so the chart takes the height between. State-coloured segments with the
+area beneath filled, gridlines, lap markers, and a forecast needle pointing in
+at where the trend heads.
 
 Every smaller field gets a traffic light and one number, centred as a group.
 The number is configurable (SmO2, rate, THb, control index), with the rate on
 a second line where there is room.
 
-The rate reads in %/s or %/min, MIN and MAX cover the session or the current
+The rate reads in %/s or %/min, MIN/MAX and AVG each cover the session or the
 lap, and the light carries a symbol so the verdict never rests on hue alone.
 There is a colour-blind palette.
 
@@ -57,7 +57,7 @@ slowly against outliers, first lap as a reference, double lap to reset.
 
 Decoupling detection
 
-If pace or power holds steady for 30 seconds while saturation keeps falling,
+If the load holds steady for 30 seconds while saturation keeps falling,
 the field flags decoupling: the onset of fatigue or efficiency loss, invisible
 in either signal alone.
 
@@ -82,7 +82,7 @@ Configurable
 
 Sensor ID, smoothing, forecast horizon, steady-state window, both thresholds,
 chart window, y axis, baseline, state naming, symbols, small-field metric and
-second line, rate unit, colour-blind mode, pace, FIT.
+second line, rate unit, colour-blind mode, load metric, FIT.
 
 The repository includes a tool that runs the same computation offline on your
 own .fit files, to tune against your own intervals.

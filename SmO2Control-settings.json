@@ -11,5 +11,13 @@
     "baselineSec": 60,
     "colorBlind": false,
     "showPace": true,
+    "smallMetric": 0,
+    "smallSecond": 2,
+    "rateUnit": 0,
+    "rangeScope": 0,
+    "avgScope": 0,
+    "loadMetric": 0,
+    "stateIcons": true,
+    "plainLabels": true,
     "recordFit": true
 }

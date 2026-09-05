@@ -36,7 +36,12 @@ STATE = {
     "prediction": 40.0,
     "now": 100.0,
     "laps": [],
-    "load": (None, 1.5),      # 11:07 /km, a wide pace string
+    "load": (None, 1.5),
+    "load_text": "88.8kph",   # the widest load string the row is sized for
+    # Three digits in every cell, which is the widest they can get.
+    "min": 100.0,
+    "avg": 100.0,
+    "max": 100.0,
     "window": [(t, 50.0, rf.STATE_STEADY) for t in range(11, 101)],
 }
 
@@ -45,13 +50,21 @@ def overlaps(a, b):
     return not (a[3] <= b[1] or b[3] <= a[1] or a[2] <= b[0] or b[2] <= a[0])
 
 
-def corners_on_glass(box, sw, sh, shape):
+def corners_on_glass(box, sw, sh, shape, origin=(0, 0)):
+    """Is every corner of `box` on the display?
+
+    The box is in field coordinates, the way the field's own drawing code sees
+    it, so `origin` is where the field sits on the screen. Skipping that
+    translation reads a Venu 3, whose full-screen field starts at (-6, 5), six
+    pixels off from the truth.
+    """
+    ox, oy = origin
+    x1, y1, x2, y2 = box[0] + ox, box[1] + oy, box[2] + ox, box[3] + oy
     if shape != "round":
-        return all(0 <= v for v in (box[0], box[1])) \
-            and box[2] <= sw and box[3] <= sh
+        return x1 >= 0 and y1 >= 0 and x2 <= sw and y2 <= sh
     cx, cy, r = sw / 2.0, sh / 2.0, sw / 2.0
-    for x in (box[0], box[2]):
-        for y in (box[1], box[3]):
+    for x in (x1, x2):
+        for y in (y1, y2):
             if math.hypot(x - cx, y - cy) > r:
                 return False
     return True
@@ -82,21 +95,22 @@ def audit():
                 ux, uy, uw, uh = rf.usable_rect(w, h, ox, oy, sw, shape)
                 tier = rf.tier_of(uw, uh, w, h, sw, sh)
                 tiers[tier] += 1
-                gx, gy = ox + ux, oy + uy
                 boxes = []
                 sink = [].append
                 if tier == "full":
                     circle = ((sw / 2.0 - ox, sh / 2.0 - oy, sw / 2.0)
                               if shape == "round" else None)
-                    rf.draw_full(sink, STATE, fonts, gx, gy, uw, uh, boxes,
+                    rf.draw_full(sink, STATE, fonts, ux, uy, uw, uh, boxes,
                                  circle, (w, h))
                 else:
-                    rf.draw_gauge(sink, STATE, fonts, tier, gx, gy, uw, uh,
+                    rf.draw_gauge(sink, STATE, fonts, tier, ux, uy, uw, uh,
                                   boxes)
                 checked += 1
                 where = f"{device} / {name} / {w}x{h} {tier}"
 
-                usable = (gx, gy, gx + uw, gy + uh)
+                # Everything below is in field coordinates; (ox, oy) is only
+                # needed to ask whether a box is on the glass.
+                usable = (ux, uy, ux + uw, uy + uh)
                 for tag, x1, y1, x2, y2 in boxes:
                     box = (x1, y1, x2, y2)
                     if tag.endswith("-grid"):
@@ -105,7 +119,7 @@ def audit():
                         # needs only the chord at its own height. So being
                         # outside the rectangle is correct here, and the test
                         # that matters is whether it is on the glass.
-                        if not corners_on_glass(box, sw, sh, shape):
+                        if not corners_on_glass(box, sw, sh, shape, (ox, oy)):
                             problems.append(
                                 f"{where}: {tag} "
                                 f"{tuple(round(v) for v in box)} off the glass")
@@ -119,7 +133,7 @@ def audit():
                         problems.append(
                             f"{where}: {tag} {tuple(round(v) for v in box)} "
                             f"outside usable {tuple(round(v) for v in usable)}")
-                    if not corners_on_glass(box, sw, sh, shape):
+                    if not corners_on_glass(box, sw, sh, shape, (ox, oy)):
                         problems.append(
                             f"{where}: {tag} {tuple(round(v) for v in box)} "
                             f"off the glass")

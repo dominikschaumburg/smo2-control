@@ -181,6 +181,7 @@ def build(path: str, lap_index: int, offset: float):
         "prediction": k.prediction(),
         "min": rng.lo,
         "max": rng.hi,
+        "avg": sum(h[1] for h in history) / len(history),
         "window": window,
         "laps": laps,
         "load": load.get(round(target), (None, None)),
@@ -188,11 +189,19 @@ def build(path: str, lap_index: int, offset: float):
 
 
 def pace_text(power, speed) -> str:
-    """Running: pace in min/km. formatLoad() only uses watts for cycling."""
+    """Running: pace in min/km. formatLoad() shows watts or km/h on the bike."""
     if speed and speed > 0.3:
         s = int(1000.0 / speed)
         return f"{s // 60}:{s % 60:02d}"
     return "--:--"
+
+
+def load_text(st) -> str:
+    """The load string. `load_text` in the state overrides it, which is how the
+    audit tests the widest string the row can ever hold ("88.8kph")."""
+    if st.get("load_text") is not None:
+        return st["load_text"]
+    return pace_text(*st["load"])
 
 
 def layouts(device: str):
@@ -249,9 +258,14 @@ def usable_rect(w, h, ox, oy, screen, shape):
 
 FAM = "Roboto, Helvetica Neue, Helvetica, Arial, sans-serif"
 
-# Roboto digit / period advance, for offline text measurement.
+# Roboto advances, for offline text measurement: the digit width, the narrow
+# period, and the percent sign, which is half again as wide as a digit and now
+# rides on the end of the value.
+ADVANCE = {".": 0.26, "%": 0.72}
+
+
 def text_w(txt, em):
-    return em * sum(0.26 if ch == "." else 0.568 for ch in txt)
+    return em * sum(ADVANCE.get(ch, 0.568) for ch in txt)
 
 
 def dim(hexcol):
@@ -390,6 +404,11 @@ NUMBER_FONTS = ("numberThaiHot", "numberHot", "numberMedium", "numberMild",
                 "large", "medium", "small", "xtiny")
 TEXT_FONTS = ("large", "medium", "small", "xtiny")
 
+# SmO2ControlView.metricSample() / rateRowSample(). The value carries its unit
+# now, and the rate shares its row with the load.
+VALUE_SAMPLE = "88.8%"
+RATE_ROW_SAMPLE = "-8.888%/s 88.8kph"
+
 
 def chord_at(y_top, y_bot, cx, cy, cr, fw):
     """Port of SmO2ControlView.chordAt(): the full width on a rectangle, the
@@ -416,8 +435,9 @@ def plan_cells(fonts, anchor, max_asc, cells, from_top, fh, cx, cy, cr, fw):
     """
     cap_em = fonts["xtiny"]
     cap_asc = cap_em * ROBOTO_ASCENT
-    cap_w = text_w("PACE", cap_em)
-    sample = "88:88" if cells > 2 else "88.8"
+    cap_w = text_w("MAX", cap_em)
+    # The cells print whole per cent, so "88.8" is a deliberate over-estimate.
+    sample = "88.8"
 
     for name in TEXT_FONTS:
         if name not in fonts:
@@ -442,12 +462,13 @@ def plan_cells(fonts, anchor, max_asc, cells, from_top, fh, cx, cy, cr, fw):
 
 
 def draw_cells(a, st, x0, y0, cell_w, cells, cap_em, cell_em, boxes, tag):
-    """Port of SmO2ControlView.drawCells()."""
+    """Port of SmO2ControlView.drawCells(): MIN, AVG, MAX."""
     cap_asc = cap_em * ROBOTO_ASCENT
-    vals = [v for _, v, _ in st["window"]]
-    lo, hi = y_bounds(st)
-    texts = [("MIN", f"{lo:.0f}", "#FFF"), ("MAX", f"{hi:.0f}", "#FFF"),
-             ("PACE", pace_text(*st["load"]), "#FFF")]
+    lo, hi = st["min"], st["max"]
+    avg = st.get("avg")
+    texts = [("MIN", f"{lo:.0f}", "#FFF"),
+             ("AVG", "--" if avg is None else f"{avg:.0f}", "#FFF"),
+             ("MAX", f"{hi:.0f}", "#FFF")]
     for i in range(cells):
         cap, txt, col = texts[i]
         cx = x0 + i * cell_w + cell_w / 2
@@ -460,6 +481,13 @@ def draw_cells(a, st, x0, y0, cell_w, cells, cap_em, cell_em, boxes, tag):
         w = max(text_w(cap, cap_em), text_w(txt, cell_em))
         boxes.append((f"cell{i}{tag}", cx - w / 2, y0, cx + w / 2,
                       y0 + cap_asc + cell_em * ROBOTO_ASCENT))
+
+
+def cell_cap(fonts, value_asc):
+    """Port of SmO2ControlView.cellCap(): half the value's height, floored at
+    the caption font. Without it plan_cells() takes the largest font that fits
+    and the supporting numbers come out bigger than the reading."""
+    return max(fonts["xtiny"] * ROBOTO_ASCENT, value_asc / 2)
 
 
 def fit_by_width(fonts, ladder, sample, avail_w, max_asc):
@@ -504,58 +532,68 @@ def row_font_down(fonts, ladder, sample, top, max_asc, fh, cx, cy, cr, fw):
             continue
         em = fonts[name]
         asc = em * ROBOTO_ASCENT
-        if asc > max_asc or top + asc > fh:
+        if asc > max_asc or top + asc > fh - PAD:
             continue
         if _fits(fonts, em, sample, top, top + asc, False, cx, cy, cr, fw):
             return em
     return None
 
 
-def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
+def draw_full(a, st, fonts, ux, uy, uw, uh, boxes, circle=None, field=None):
     """Port of SmO2ControlView.drawFull() plus its share of layoutTier().
 
-    `circle` is (cx, cy, r) in field coordinates, or None on a rectangular
-    screen; `field` is (w, h) of the device context.
+    Everything here is in FIELD coordinates, exactly as the Monkey C sees its
+    own device context: (ux, uy) is the usable rectangle's origin inside the
+    field, `circle` is (cx, cy, r) in the same frame or None on a rectangular
+    screen, and `field` is (w, h) of the context. A caller placing the field
+    somewhere other than the screen origin translates the result; mixing the
+    two frames here is what made a Venu 3 row look 6 px off the glass when it
+    was not.
     """
     label_em = fonts["xtiny"]
     label_asc = label_em * ROBOTO_ASCENT
     fw, fh = field if field else (uw, uh)
-    cx, cy, cr = circle if circle else (gx + uw / 2, gy + uh / 2, 0)
+    cx, cy, cr = circle if circle else (ux + uw / 2, uy + uh / 2, 0)
 
     state = LABEL[st["state"]]
-    load = pace_text(*st["load"])
+    load = load_text(st)
     sign = "+" if st["slope"] >= 0 else ""
     rate = f'{sign}{st["slope"]:.3f}%/s'
     col = COLOUR[st["state"]]
+    min_line = fonts["xtiny"] * ROBOTO_ASCENT
 
     # --- layoutEdges(): rectangle, rows on the edges ---------------------
+    # The value and its MIN / AVG / MAX trio above the chart, the state light
+    # and the rate/load row below it; see layoutEdges() for why the numbers
+    # are grouped that way.
     edges = None
     if cr <= 0 and field is not None:
         avail_w = fw - 2 * PAD
-        v_em = fit_by_width(fonts, NUMBER_FONTS, "88.8", avail_w, fh / 5)
+        v_em = fit_by_width(fonts, NUMBER_FONTS, VALUE_SAMPLE, avail_w, fh / 5)
         s_em = fit_by_width(fonts, TEXT_FONTS, "DRIFTING",
                             avail_w - fonts["large"] * ROBOTO_ASCENT - PAD,
                             fh / 10)
         if v_em and s_em:
             v_asc, s_asc = v_em * ROBOTO_ASCENT, s_em * ROBOTO_ASCENT
-            r_em = fit_by_width(fonts, TEXT_FONTS, "-8.888%/s", avail_w,
-                                v_asc * 3 / 4)
+            r_em = fit_by_width(fonts, TEXT_FONTS, RATE_ROW_SAMPLE, avail_w,
+                                max(min_line, s_asc * 3 / 4))
             if r_em:
                 r_asc = r_em * ROBOTO_ASCENT
-                cells = 3
-                plan = plan_cells(fonts, fh - PAD, fh / 8, cells, False,
+                plan = plan_cells(fonts, 2 * PAD + v_asc,
+                                  cell_cap(fonts, v_asc), 3, True,
                                   fh, cx, cy, cr, fw)
                 if plan:
                     cell_h, cell_w, cell_x0, cell_y, cap_em, cell_em = plan
-                    top_h = 3 * PAD + s_asc + v_asc
-                    bot_h = 3 * PAD + r_asc + cell_h
+                    top_h = 2 * PAD + v_asc + cell_h
+                    bot_h = 3 * PAD + s_asc + r_asc
                     ch = fh - top_h - bot_h - 2 * PAD
                     if ch >= 110:
+                        state_y = fh - bot_h + PAD
                         edges = (s_em, v_em, r_em,
-                                 PAD, 2 * PAD + s_asc,
-                                 fh - bot_h + PAD, cell_y,
+                                 state_y, PAD,
+                                 state_y + s_asc + PAD, cell_y,
                                  top_h + PAD, top_h + PAD + ch, avail_w,
-                                 cell_x0, cells, cell_w, cap_em, cell_em, 0)
+                                 cell_x0, 3, cell_w, cap_em, cell_em, avail_w)
 
     # --- layoutThirds() --------------------------------------------------
     # Only for a field that *is* the screen; see layoutThirds().
@@ -566,58 +604,62 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
     if owns and band >= 6 * PAD:
         # Rows in a third are searched as a pair, largest first; see
         # layoutThirds() for why a greedy search fails here.
-        cap = band - 3 * PAD - fonts["xtiny"] * ROBOTO_ASCENT
-        v_em = s_em = None
-        value_top = 0
-        for name in NUMBER_FONTS:
-            if name not in fonts:
-                continue
-            em = fonts[name]
-            asc = em * ROBOTO_ASCENT
-            if asc > cap or not _fits(fonts, em, "88.8", band - PAD - asc,
-                                      band - PAD, False, cx, cy, cr, fw):
-                continue
-            top = band - PAD - asc
-            sf = row_font_up(fonts, TEXT_FONTS, "DRIFTING", top - PAD,
-                             top - 2 * PAD, True, cx, cy, cr, fw)
-            if sf:
-                v_em, s_em, value_top = em, sf, top
-                break
+        cap = band - 3 * PAD - min_line
 
-        # The rate is capped against the value, not the band; see
-        # layoutThirds() for why.
-        rate_cap = min(cap, v_em * ROBOTO_ASCENT * 3 / 4) if v_em else cap
+        # Top third: the cell trio against the inner edge, the value above it.
+        # The trio takes the shortest row that can hold it (the caption font
+        # twice over) and the wider chord, because it is the wider row; see
+        # layoutThirds() for the measurement.
         cap_asc = fonts["xtiny"] * ROBOTO_ASCENT
-        rate_top = 2 * band + PAD
-        r_em = None
-        cellinfo = None
-        cell_top = 0
+        cellinfo = plan_cells(fonts, band - PAD, cap_asc, 3, False,
+                              fh, cx, cy, cr, fw)
+        v_em = None
+        value_top = 0
+        if cellinfo is not None:
+            value_bottom = cellinfo[3] - PAD
+            for name in NUMBER_FONTS:
+                if name not in fonts:
+                    continue
+                em = fonts[name]
+                asc = em * ROBOTO_ASCENT
+                if asc > cap or value_bottom - asc < PAD:
+                    continue
+                if _fits(fonts, em, VALUE_SAMPLE, value_bottom - asc,
+                         value_bottom, False, cx, cy, cr, fw):
+                    v_em, value_top = em, value_bottom - asc
+                    break
+
+        # Bottom third: the state light against the inner edge, the rate and
+        # the load sharing the row below it.
+        state_top = 2 * band + PAD
+        s_em = r_em = None
+        rate_top = 0
+        rate_w = 0
         for name in TEXT_FONTS:
             if name not in fonts:
                 continue
             em = fonts[name]
             asc = em * ROBOTO_ASCENT
-            if asc > rate_cap or not _fits(fonts, em, "-8.888%/s 88:88",
-                                           rate_top, rate_top + asc, False,
-                                           cx, cy, cr, fw):
+            if (asc > cap or (v_em and asc > v_em * ROBOTO_ASCENT)
+                    or not _fits(fonts, em, "DRIFTING", state_top,
+                                 state_top + asc, True, cx, cy, cr, fw)):
                 continue
-            c_top = rate_top + asc + PAD
-            info = plan_cells(fonts, c_top, fh - PAD - c_top - cap_asc, 2,
-                              True, fh, cx, cy, cr, fw)
-            if info is not None:
-                cell_h, cell_w, cell_x0, cell_y, cap_em, cell_em = info
-                r_em = em
-                rate_w = chord_at(rate_top, rate_top + asc, cx, cy, cr,
-                                  fw) - 2 * PAD
+            r_top = state_top + asc + PAD
+            rf = row_font_down(fonts, TEXT_FONTS, RATE_ROW_SAMPLE, r_top,
+                               max(min_line, asc * 3 / 4), fh, cx, cy, cr, fw)
+            if rf:
+                s_em, r_em, rate_top = em, rf, r_top
+                rate_w = chord_at(r_top, r_top + rf * ROBOTO_ASCENT,
+                                  cx, cy, cr, fw) - 2 * PAD
                 break
 
         ct, cb = band + PAD, 2 * band - PAD
         cw = chord_at(ct, cb, cx, cy, cr, fw) - 8 * PAD
-        if v_em and s_em and r_em and cw >= 180:
-            grid = (s_em, v_em, r_em,
-                    value_top - PAD - s_em * ROBOTO_ASCENT, value_top,
+        if v_em and s_em and r_em and cellinfo and cw >= 180:
+            cell_h, cell_w, cell_x0, cell_y, cap_em, cell_em = cellinfo
+            grid = (s_em, v_em, r_em, state_top, value_top,
                     rate_top, cell_y, ct, cb, cw,
-                    cell_x0, 2, cell_w, cap_em, cell_em, rate_w)
+                    cell_x0, 3, cell_w, cap_em, cell_em, rate_w)
 
     def state_group(x, mid_y, em, centred_flag, tag):
         asc = em * ROBOTO_ASCENT
@@ -628,8 +670,10 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
         a(f'<circle cx="{x0+dot_r:.1f}" cy="{mid_y:.1f}" r="{dot_r}" '
           f'fill="{col}"/>')
         state_icon(a, x0 + dot_r, mid_y, dot_r, st["state"], "#000")
+        # In the state colour, like the value: drawStateRow() sets one colour
+        # for the light and its name.
         a(f'<text x="{x0+2*dot_r+PAD:.1f}" y="{mid_y+asc*0.36:.0f}" '
-          f'font-family="{FAM}" font-size="{em:.1f}" fill="#FFF">{state}</text>')
+          f'font-family="{FAM}" font-size="{em:.1f}" fill="{col}">{state}</text>')
         boxes.append((tag, x0, mid_y - asc / 2, x0 + group_w, mid_y + asc / 2))
 
     def centred(txt, top, em, fill, tag, at=None):
@@ -645,10 +689,10 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
     if grid:
         (s_em, v_em, r_em, sy, vy, ry, cy0, ct, cb, cw, cell_x0,
          cells, cell_w, cap_em, cell_em, rate_w) = grid
-        anchor = gx + uw / 2 if edges else cx
+        anchor = cx
+        centred(f'{st["level"]:.1f}%', vy, v_em, col, "value-grid", anchor)
         state_group(anchor, sy + s_em * ROBOTO_ASCENT / 2, s_em, True,
                     "state-grid")
-        centred(f'{st["level"]:.1f}', vy, v_em, col, "value-grid", anchor)
         if rate_w:
             r_asc = r_em * ROBOTO_ASCENT
             lx, rx = anchor - rate_w / 2, anchor + rate_w / 2
@@ -673,19 +717,21 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
     # --- layoutTwoRow() --------------------------------------------------
     dot_r = max(3, int(label_asc / 2))
     state_w = text_w("DRIFTING", label_em) + 2 * dot_r + PAD
-    value_em = largest_number_font(fonts, "88.8", uw - state_w - 3 * PAD, uh / 3)
+    value_em = largest_number_font(fonts, VALUE_SAMPLE, uw - state_w - 3 * PAD,
+                                   uh / 3)
     value_asc = value_em * ROBOTO_ASCENT
     head_h = max(value_asc, label_asc)
-    rate_y = gy + uh - PAD - label_asc
-    chart_y = int(gy + PAD + head_h + PAD)
+    rate_y = uy + uh - PAD - label_asc
+    chart_y = int(uy + PAD + head_h + PAD)
     chart_h = max(20, int(rate_y - PAD - chart_y))
-    left, right = gx + PAD, gx + uw - PAD
-    head_mid = gy + PAD + head_h / 2
+    left, right = ux + PAD, ux + uw - PAD
+    head_mid = uy + PAD + head_h / 2
 
     a(f'<text x="{left}" y="{head_mid+value_asc/2:.0f}" font-family="{FAM}" '
-      f'font-size="{value_em:.1f}" fill="{col}">{st["level"]:.1f}</text>')
+      f'font-size="{value_em:.1f}" fill="{col}">{st["level"]:.1f}%</text>')
     boxes.append(("value", left, head_mid - value_asc / 2,
-                  left + text_w("88.8", value_em), head_mid + value_asc / 2))
+                  left + text_w(VALUE_SAMPLE, value_em),
+                  head_mid + value_asc / 2))
     state_group(right, head_mid, label_em, False, "state")
     a(f'<text x="{left}" y="{rate_y+label_asc:.0f}" font-family="{FAM}" '
       f'font-size="{label_em:.1f}" fill="{col}">{rate}</text>')
@@ -694,12 +740,11 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
 
     # The range in the middle of the footer, where the rate and the load leave
     # room for it; see layoutTwoRow().
-    foot_w = (text_w("-8.888%/s", label_em) + text_w("88:88 DEC", label_em)
+    foot_w = (text_w("-8.888%/s", label_em) + text_w("88.8kph DEC", label_em)
               + text_w("88-88", label_em) + 4 * PAD)
     if foot_w <= uw - 2 * PAD:
-        lo, hi = y_bounds(st)
-        rng = f"{lo:.0f}-{hi:.0f}"
-        mid = gx + uw / 2
+        rng = f'{st["min"]:.0f}-{st["max"]:.0f}'
+        mid = ux + uw / 2
         a(f'<text x="{mid:.0f}" y="{rate_y+label_asc:.0f}" font-family="{FAM}" '
           f'font-size="{label_em:.1f}" fill="#AAA" text-anchor="middle">'
           f'{rng}</text>')
@@ -709,11 +754,11 @@ def draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle=None, field=None):
       f'font-size="{label_em:.1f}" fill="#FFF" text-anchor="end">{load}</text>')
     boxes.append(("load", right - text_w(load, label_em), rate_y, right,
                   rate_y + label_asc))
-    draw_chart(a, st, gx + PAD, chart_y, uw - 2 * PAD, chart_h, label_em, True,
+    draw_chart(a, st, ux + PAD, chart_y, uw - 2 * PAD, chart_h, label_em, True,
                boxes)
 
 
-def draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes):
+def draw_gauge(a, st, fonts, tier, ux, uy, uw, uh, boxes):
     """Port of SmO2ControlView.drawGauge(): a traffic light and one number,
     as a single group centred in the cell, plus an optional second line."""
     label_em = fonts["xtiny"]
@@ -725,10 +770,15 @@ def draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes):
     def gap_for(r):
         return max(3, r / 2)
 
+    # The full number ladder, as largestGaugeFont() walks it. Stopping at
+    # numberMedium here made the audit optimistic: the watch would pick a
+    # larger font than the port had measured.
     value_em = fonts["xtiny"]
-    for name in ("numberMedium", "numberMild", "large", "medium", "small"):
+    for name in NUMBER_FONTS:
+        if name not in fonts:
+            continue
         asc = fonts[name] * ROBOTO_ASCENT
-        w = asc + gap_for(asc / 2) + text_w("88.8", fonts[name])
+        w = asc + gap_for(asc / 2) + text_w(VALUE_SAMPLE, fonts[name])
         if w <= uw - 2 * PAD and asc <= content_h - 2 * PAD:
             value_em = fonts[name]
             break
@@ -736,12 +786,12 @@ def draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes):
     dot_r = value_asc / 2
     gap = gap_for(dot_r)
     block_h = value_asc + PAD + label_asc if show_unit else value_asc
-    block_top = gy + (uh - block_h) / 2
+    block_top = uy + (uh - block_h) / 2
     dot_y = block_top + value_asc / 2
 
-    txt = f'{st["level"]:.1f}'
+    txt = f'{st["level"]:.1f}%'
     tw = text_w(txt, value_em)
-    x0 = gx + (uw - (2 * dot_r + gap + tw)) / 2
+    x0 = ux + (uw - (2 * dot_r + gap + tw)) / 2
 
     a(f'<circle cx="{x0+dot_r:.1f}" cy="{dot_y:.1f}" r="{dot_r:.1f}" '
       f'fill="{COLOUR[st["state"]]}"/>')
@@ -758,11 +808,11 @@ def draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes):
         sign = "+" if st["slope"] >= 0 else ""
         second = f'{sign}{st["slope"]:.3f}%/s'
         uy0 = block_top + value_asc + PAD
-        a(f'<text x="{gx+uw/2:.0f}" y="{uy0+label_asc:.0f}" font-family="{FAM}" '
+        a(f'<text x="{ux+uw/2:.0f}" y="{uy0+label_asc:.0f}" font-family="{FAM}" '
           f'font-size="{label_em:.1f}" fill="#AAA" text-anchor="middle">'
           f'{second}</text>')
-        boxes.append(("unit", gx + uw / 2 - text_w(second, label_em) / 2, uy0,
-                      gx + uw / 2 + text_w(second, label_em) / 2,
+        boxes.append(("unit", ux + uw / 2 - text_w(second, label_em) / 2, uy0,
+                      ux + uw / 2 + text_w(second, label_em) / 2,
                       uy0 + label_asc))
 
 
@@ -825,14 +875,19 @@ def render_layout(st, out, device, layout_name):
         ux, uy, uw, uh = usable_rect(w, h, ox, oy, sw, shape)
         tier = tier_of(uw, uh, w, h, sw, sh)
         tiers.append(f"{w}x{h}->{tier}")
-        gx, gy = ox + ux, oy + uy
         boxes = []
+        # The field draws in its own coordinates, so the cell is placed by a
+        # transform rather than by adding the origin to every number. On a
+        # device whose full-screen field is not at the screen origin (the
+        # Venu 3 sits at -6, 5) the two are not the same thing.
+        a(f'<g transform="translate({ox},{oy})">')
         if tier == "full":
             circle = ((sw / 2.0 - ox, sh / 2.0 - oy, sw / 2.0)
                       if shape == "round" else None)
-            draw_full(a, st, fonts, gx, gy, uw, uh, boxes, circle, (w, h))
+            draw_full(a, st, fonts, ux, uy, uw, uh, boxes, circle, (w, h))
         else:
-            draw_gauge(a, st, fonts, tier, gx, gy, uw, uh, boxes)
+            draw_gauge(a, st, fonts, tier, ux, uy, uw, uh, boxes)
+        a('</g>')
         a(f'<rect x="{ox}" y="{oy}" width="{w}" height="{h}" fill="none" '
           f'stroke="#333" stroke-width="1"/>')
     close(o, sw, sh, shape)

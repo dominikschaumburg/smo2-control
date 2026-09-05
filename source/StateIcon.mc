@@ -22,6 +22,18 @@
 // joins at the corners, at the cost of one fillCircle per point. That is what
 // keeps these from looking like a debug overlay.
 //
+// Two details decide whether that actually reads as round on the glass, and
+// both were wrong at first:
+//
+//   * the cap radius has to round UP. A pen of width w covers w/2 either side
+//     of the line, and integer division downwards leaves the disc buried
+//     inside the stroke it is meant to cap — visibly square tips, worst at
+//     the small sizes where w is 2 or 3 and the error is half the stroke.
+//   * the rasteriser has to be told to antialias. Without it a 12 px disc and
+//     a diagonal chevron are drawn as stair steps, so there is nothing to
+//     round off. smooth() turns it on where the device supports it, which is
+//     everything from the fenix 5 onwards.
+//
 
 import Toybox.Graphics;
 import Toybox.Lang;
@@ -30,6 +42,16 @@ module StateIcon {
 
     //! Below this radius a glyph is mush; the disc carries the meaning alone.
     const MIN_RADIUS = 7;
+
+    //! Antialiasing, where the device has it. The light is the one place in
+    //! the field that is all curves and diagonals, so it is the one place
+    //! worth the pixels — and it is scoped rather than left on, because the
+    //! chart's area fill relies on adjacent quads sharing a hard edge.
+    function smooth(dc as Graphics.Dc, on as Boolean) as Void {
+        if (dc has :setAntiAlias) {
+            dc.setAntiAlias(on);
+        }
+    }
 
     //! Draw the glyph for `state` centred on (cx, cy), sized to a disc of
     //! radius r, in `color`. Does nothing if the disc is too small to hold it.
@@ -50,8 +72,11 @@ module StateIcon {
 
         // Everything is laid out in a unit box and scaled by the radius, so
         // one set of proportions serves every field size.
-        var half = (r * 0.44).toNumber();   // half-width of a chevron
-        var rise = (r * 0.26).toNumber();   // how far a chevron's apex travels
+        // Rounded, not truncated. At the small radii truncation costs a whole
+        // pixel of rise, and a chevron whose apex travels one pixel is a
+        // straight line with a bump in it.
+        var half = (r * 0.44 + 0.5).toNumber();   // half-width of a chevron
+        var rise = (r * 0.26 + 0.5).toNumber();   // how far the apex travels
         if (half < 2) { half = 2; }
         if (rise < 1) { rise = 1; }
 
@@ -138,10 +163,12 @@ module StateIcon {
         cap(dc, x2, yEnd, w);
     }
 
-    //! A round cap or join: a disc of the stroke's own diameter.
+    //! A round cap or join: a disc of the stroke's own diameter. The radius
+    //! rounds up — see the header — and never below 1, or the thinnest
+    //! strokes lose their caps altogether and end in a corner.
     function cap(dc as Graphics.Dc, x as Number, y as Number, w as Number) as Void {
-        var r = w / 2;
-        if (r < 1) { return; }
+        var r = (w + 1) / 2;
+        if (r < 1) { r = 1; }
         dc.fillCircle(x, y, r);
     }
 }

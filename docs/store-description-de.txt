@@ -28,24 +28,23 @@ steilen Abfall, und der ist noch kein Urteil; ob es nachhaltig war, entscheidet
 sich daran, ob danach ein Plateau eintritt. Deshalb hat der Transient einen
 eigenen Zustand.
 
-An echten Daten kalibriert
+Nichts zu kalibrieren
 
-Die Schwellen sind gemessen, nicht geraten. Über fünf echte Einheiten bleibt
-die Steigung im Plateau über 60 Sekunden innerhalb von ±0,06 %/s, während der
-On-Transient −0,23 %/s unterschreitet.
+Das Urteil kommt aus der Steigung und nicht aus dem Wert, hängt also nicht an
+Sensorstelle, Gurtdruck oder Tagesform. Nichts einzurichten: Sensor anlegen,
+starten, und die Zustände arbeiten binnen einer Minute.
 
 Adaptive Anzeige
 
-Vollbild: Wert und Zustandsampel oben, das Diagramm in der Mitte, darunter die
-Rate und ein beschriftetes Zellenraster mit MIN, MAX und Pace. Jede Zeile so
-groß, wie ihre Breite erlaubt; auf einem Radcomputer sitzen die Zeilen an den
-Kanten und das Diagramm bekommt die Höhe dazwischen. Es zeigt eingefärbte
-Segmente mit gefüllter Fläche, Gitterlinien, Lap-Marker und eine
-Prognose-Nadel.
+Vollbild: der Wert mit einem beschrifteten Zellenraster aus MIN, AVG und MAX
+über dem Diagramm, darunter Zustandsampel mit Namen, Rate und Last. Jede Zeile
+so groß, wie ihre Breite erlaubt; auf einem Radcomputer sitzen die Zeilen an
+den Kanten und das Diagramm bekommt die Höhe dazwischen. Eingefärbte Segmente
+mit gefüllter Fläche, Gitterlinien, Lap-Marker und eine Prognose-Nadel.
 
 Jedes kleinere Feld bekommt eine Ampel und eine Zahl, als Gruppe zentriert. Die
 Zahl ist einstellbar (SmO2, Rate, THb, Control-Index), darunter die Rate,
-wahlweise in %/s oder %/min. MIN und MAX über die Einheit oder die aktuelle
+wahlweise in %/s oder %/min. MIN/MAX und AVG je über die Einheit oder die
 Runde. Die Ampel trägt ein Symbol, damit das Urteil nicht allein an der Farbe
 hängt, dazu eine Farbenblind-Palette.
 
@@ -56,7 +55,7 @@ Relaxation gegen Ausreißer, erster Lap als Referenz, Doppel-Lap setzt zurück.
 
 Entkopplungserkennung
 
-Bleibt Pace oder Power 30 Sekunden konstant, während die Sättigung weiter
+Bleibt die Last 30 Sekunden konstant, während die Sättigung weiter
 absinkt, meldet das Feld Entkopplung: beginnende Ermüdung oder
 Effizienzverlust, in keinem Signal allein sichtbar.
 
@@ -81,7 +80,7 @@ Einstellbar
 
 Sensor-ID, Glättung, Prognosehorizont, Steady-State-Fenster, beide Schwellen,
 Diagrammfenster, Y-Achse, Baseline, Zustandsbenennung, Metrik und zweite Zeile
-der kleinen Felder, Rateneinheit, Symbole, Farbenblind-Modus, Pace, FIT.
+der kleinen Felder, Rateneinheit, Symbole, Farbenblind-Modus, Last, FIT.
 
 Das Repository enthält ein Werkzeug, das dieselbe Berechnung offline auf
 eigenen .fit-Dateien rechnet, zum Abstimmen an eigenen Intervallen.

@@ -2,25 +2,33 @@
 <defs><clipPath id="glass"><circle cx="227.0" cy="227.0" r="227.0"/></clipPath></defs>
 <rect width="454" height="454" fill="#000"/>
 <g clip-path="url(#glass)">
-<circle cx="95.4" cy="130.9" r="21.0" fill="#00AAFF"/>
-<polyline points="86.2,136.3 95.4,125.4 104.6,136.3" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="126.8" y="146.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
-<text x="145" y="185" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<g transform="translate(0,0)">
+<circle cx="99.1" cy="130.9" r="14.6" fill="#00AAFF"/>
+<polyline points="92.7,134.7 99.1,127.1 105.5,134.7" stroke="#000" stroke-width="4.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="121.0" y="141.4" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#FFF">46.9%</text>
+<text x="145" y="179" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+</g>
 <rect x="0" y="0" width="225" height="225" fill="none" stroke="#333" stroke-width="1"/>
-<circle cx="258.9" cy="130.9" r="21.0" fill="#00AAFF"/>
-<polyline points="249.7,136.3 258.9,125.4 268.1,136.3" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="290.3" y="146.0" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
-<text x="308" y="185" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<g transform="translate(228,0)">
+<circle cx="34.6" cy="130.9" r="14.6" fill="#00AAFF"/>
+<polyline points="28.2,134.7 34.6,127.1 41.0,134.7" stroke="#000" stroke-width="4.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="56.5" y="141.4" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#FFF">46.9%</text>
+<text x="80" y="179" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+</g>
 <rect x="228" y="0" width="225" height="225" fill="none" stroke="#333" stroke-width="1"/>
-<circle cx="95.4" cy="289.4" r="21.0" fill="#00AAFF"/>
-<polyline points="86.2,294.8 95.4,283.9 104.6,294.8" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="126.8" y="304.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
-<text x="145" y="344" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<g transform="translate(0,228)">
+<circle cx="99.1" cy="61.4" r="14.6" fill="#00AAFF"/>
+<polyline points="92.7,65.2 99.1,57.6 105.5,65.2" stroke="#000" stroke-width="4.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="121.0" y="71.9" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#FFF">46.9%</text>
+<text x="145" y="109" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+</g>
 <rect x="0" y="228" width="225" height="226" fill="none" stroke="#333" stroke-width="1"/>
-<circle cx="258.9" cy="289.4" r="21.0" fill="#00AAFF"/>
-<polyline points="249.7,294.8 258.9,283.9 268.1,294.8" stroke="#000" stroke-width="7.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<text x="290.3" y="304.5" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="45.2" fill="#FFF">46.9</text>
-<text x="308" y="344" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+<g transform="translate(228,228)">
+<circle cx="34.6" cy="61.4" r="14.6" fill="#00AAFF"/>
+<polyline points="28.2,65.2 34.6,57.6 41.0,65.2" stroke="#000" stroke-width="4.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="56.5" y="71.9" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#FFF">46.9%</text>
+<text x="80" y="109" font-family="Roboto, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="31.5" fill="#AAA" text-anchor="middle">+0.101%/s</text>
+</g>
 <rect x="228" y="228" width="225" height="226" fill="none" stroke="#333" stroke-width="1"/>
 </g>
 <circle cx="227.0" cy="227.0" r="226.5" fill="none" stroke="#2A2F37" stroke-width="1"/>

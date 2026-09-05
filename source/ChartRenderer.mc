@@ -40,7 +40,8 @@ class ChartRenderer {
         Y_WINDOW  = 0,   // follows what is on screen, with a floor
         Y_SESSION = 1,   // the whole session's range
         Y_20_80   = 2,
-        Y_0_100   = 3
+        Y_0_100   = 3,
+        Y_LAP     = 4    // the current lap's range
     }
 
     private const NO_DATA = -1.0;
@@ -197,7 +198,9 @@ class ChartRenderer {
         _showAxis = show;
     }
 
-    //! Y scaling inputs, refreshed each frame before draw().
+    //! Y scaling inputs, refreshed each frame before draw(). `sessMin` and
+    //! `sessMax` are whichever extremes the chosen mode refers to: the
+    //! session's in Y_SESSION, the lap's in Y_LAP.
     public function setBounds(yMode as Number, sessMin as Float?,
                               sessMax as Float?) as Void {
         _yMode = yMode;
@@ -222,7 +225,9 @@ class ChartRenderer {
         if (yMode == Y_20_80) {
             lo = 20.0;
             hi = 80.0;
-        } else if (yMode == Y_SESSION) {
+        } else if (yMode == Y_SESSION || yMode == Y_LAP) {
+            // Same treatment either way: the view has already decided whose
+            // extremes these are, so the chart only has to pad them.
             var b = padded(sessMin, sessMax, SESSION_MIN_SPAN);
             lo = b[0];
             hi = b[1];

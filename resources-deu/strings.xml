@@ -26,6 +26,7 @@
     <string id="s_yAxis_session">Session-Range</string>
     <string id="s_yAxis_2080">Fest 20 – 80 %</string>
     <string id="s_yAxis_0100">Fest 0 – 100 %</string>
+    <string id="s_yAxis_lap">Runden-Range</string>
     <string id="s_baseline">Baseline-Fenster (s)</string>
     <string id="s_colorBlind">Farbenblind-Palette</string>
     <string id="s_showPace">Pace / Power anzeigen</string>
@@ -44,6 +45,11 @@
     <string id="s_rangeScope">MIN / MAX beziehen sich auf</string>
     <string id="s_rangeScope_session">Gesamte Einheit</string>
     <string id="s_rangeScope_lap">Aktuelle Runde</string>
+    <string id="s_avgScope">AVG bezieht sich auf</string>
+    <string id="s_loadMetric">Angezeigte Last</string>
+    <string id="s_load_auto">Automatisch (nach Sportart)</string>
+    <string id="s_load_speed">Pace / Geschwindigkeit</string>
+    <string id="s_load_power">Leistung</string>
     <string id="s_plainLabels">Klartext-Zustandsnamen</string>
     <string id="s_stateIcons">Symbol in der Zustandsampel</string>
     <string id="s_recordFit">SmO2-Felder ins FIT schreiben</string>

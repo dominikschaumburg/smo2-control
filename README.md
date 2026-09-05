@@ -72,19 +72,27 @@ All thresholds are measured against five real threshold sessions, not guessed.
 With a 60 s window the plateau slope stays inside ±0.06 %/s while the
 on-transient runs past −0.23 %/s.
 
-Everything is normalised **within** the session — baseline median, relaxing
-session min/max, first lap as a calibration interval — because absolute SmO2
-depends on sensor placement, adipose thickness, strap pressure and day form.
+**Nothing needs calibrating.** The verdict is read from the slope, and a slope
+in %/s means the same thing at any level, so sensor placement, adipose
+thickness, strap pressure and day form drop out of it. What is normalised
+within the session is only what gets *reported*: the relaxing session min/max
+behind MIN and MAX, and the lap-scoped variants behind the lap button. A
+baseline median and a first-lap reference band are also computed, and currently
+feed nothing; see
+[docs/functionality-en.md](docs/functionality-en.md) section 4.
 
 ## Layout
 
 Three tiers, chosen once from the rendered size:
 
 - **Full** — the full-screen and half-screen field only. Filled chart with
-  gridlines, lap markers and a forecast needle; value and state light above,
-  rate below, and MIN / MAX / PACE as a labelled cell grid under the chart.
-  Rows pack to the edges on a bike computer and inwards on a round watch,
-  because on a round watch the tips of the circle cannot hold text.
+  gridlines, lap markers and a forecast needle, framed by two blocks: the SmO₂
+  reading with MIN / AVG / MAX as a labelled cell grid above it, and the state
+  light with its name, the rate and the external load below it. One block says
+  what the reading is, the other what it means, so neither question is split
+  across the plot. Rows pack to the edges on a bike computer and inwards on a
+  round watch, because on a round watch the tips of the circle cannot hold
+  text.
 - **Medium / Compact** — everything smaller: a **traffic light** and one
   configurable number as a single centred group, with the rate of change on a
   second line where there is room. A sparkline squeezed into a quarter of a
